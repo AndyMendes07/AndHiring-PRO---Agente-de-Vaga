@@ -6,16 +6,15 @@
 <title>AndHiring — Triagem Senior de Candidatos</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
-<!-- defer: carrega em paralelo, executa após o parse do HTML sem bloquear renderização -->
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
   --bg: #0b0c10;
   --surface: #12141a;
   --surface-2: #1a1d26;
   --border: #252a38;
-  --border-light: #2e3447;
   --accent: #7c6af5;
   --accent-dim: rgba(124,106,245,0.12);
   --accent-glow: rgba(124,106,245,0.25);
@@ -30,1121 +29,269 @@
   --text-subtle: #5a6480;
   --radius: 12px;
   --radius-sm: 8px;
-  --shadow: 0 4px 24px rgba(0,0,0,0.4);
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { font-size: 16px; -webkit-font-smoothing: antialiased; }
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  min-height: 100vh;
-  overflow-x: hidden;
-}
-
-/* SCROLLBAR */
+body { background: var(--bg); color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; min-height: 100vh; overflow-x: hidden; }
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-/* FOCUS VISÍVEL */
-:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-button:focus-visible, a:focus-visible { border-radius: var(--radius-sm); }
+/* ═══ LOGIN ═══ */
+#view-login { display: none; min-height: 100vh; align-items: center; justify-content: center; padding: 24px; }
+#view-login.active { display: flex; }
+.login-card { width: 100%; max-width: 420px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 40px 36px; box-shadow: 0 40px 80px rgba(0,0,0,0.4); }
+.login-logo { font-family: 'Fraunces', serif; font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 8px; }
+.login-logo span { color: var(--accent); }
+.login-card > p { color: var(--text-muted); font-size: 0.875rem; line-height: 1.6; margin-bottom: 32px; }
+.login-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 8px; display: block; }
+.login-input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 16px; color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.9rem; outline: none; transition: border-color 0.2s; margin-bottom: 16px; }
+.login-input:focus { border-color: var(--accent); }
+.btn-login { width: 100%; padding: 13px; background: var(--accent); border: none; border-radius: var(--radius); color: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: opacity 0.2s, transform 0.15s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.btn-login:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
+.btn-login:disabled { opacity: 0.4; cursor: not-allowed; }
+.login-feedback { margin-top: 16px; padding: 12px 16px; border-radius: var(--radius-sm); font-size: 0.82rem; line-height: 1.5; display: none; }
+.login-feedback.success { display: block; background: var(--emerald-dim); border: 1px solid rgba(52,211,153,0.3); color: var(--emerald); }
+.login-feedback.error { display: block; background: var(--red-dim); border: 1px solid rgba(248,113,113,0.3); color: var(--red); }
+.login-divider { height: 1px; background: var(--border); margin: 24px 0; }
+.login-footer { font-size: 0.75rem; color: var(--text-subtle); text-align: center; line-height: 1.6; }
+
+/* ═══ APP ═══ */
+#app { display: none; }
+#app.active { display: block; }
 
 /* NAV */
-.nav {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-  height: 60px;
-  background: rgba(11,12,16,0.90);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0 32px;
-}
-.nav-logo {
-  font-family: 'Fraunces', serif;
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: var(--text);
-  letter-spacing: -0.02em;
-}
+.nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; height: 60px; background: rgba(11,12,16,0.90); backdrop-filter: blur(16px); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 32px; }
+.nav-logo { font-family: 'Fraunces', serif; font-size: 1.2rem; font-weight: 700; letter-spacing: -0.02em; }
 .nav-logo span { color: var(--accent); }
-.nav-steps {
-  display: flex; align-items: center; gap: 0;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 99px;
-  padding: 4px;
-}
-.step-btn {
-  display: flex; align-items: center; gap: 8px;
-  padding: 7px 18px;
-  border-radius: 99px;
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 0.8rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
+.nav-steps { display: flex; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: 99px; padding: 4px; }
+.step-btn { display: flex; align-items: center; gap: 8px; padding: 7px 18px; border-radius: 99px; border: none; background: transparent; color: var(--text-muted); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.8rem; font-weight: 500; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
 .step-btn.active { background: var(--accent); color: #fff; }
 .step-btn.done { color: var(--emerald); }
 .step-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.step-btn .step-num {
-  width: 20px; height: 20px;
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 0.7rem;
-  font-weight: 600;
-  background: var(--border);
-  transition: all 0.2s;
-}
+.step-btn .step-num { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 600; background: var(--border); transition: all 0.2s; }
 .step-btn.active .step-num { background: rgba(255,255,255,0.2); }
 .step-btn.done .step-num { background: var(--emerald-dim); color: var(--emerald); }
-.nav-badge {
-  font-size: 0.7rem;
-  color: var(--text-muted);
-  font-family: 'Fira Code', monospace;
-}
+.nav-right { display: flex; align-items: center; gap: 12px; }
+.nav-badge { font-size: 0.7rem; color: var(--text-muted); font-family: 'Fira Code', monospace; }
+.nav-user { display: flex; align-items: center; gap: 8px; padding: 5px 12px; border-radius: 99px; background: var(--surface); border: 1px solid var(--border); }
+.nav-user-email { font-size: 0.72rem; color: var(--text-muted); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.btn-logout { background: none; border: none; color: var(--text-subtle); font-size: 0.72rem; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; transition: color 0.2s; }
+.btn-logout:hover { color: var(--red); }
 
 /* VIEWS */
 .view { display: none; padding-top: 60px; min-height: 100vh; }
 .view.active { display: flex; flex-direction: column; }
 
-/* ═══════════ VIEW 1: JOB CHAT ═══════════ */
-#view-job {
-  flex-direction: row;
-  height: 100vh;
-}
-.chat-panel {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  border-right: 1px solid var(--border);
-  max-width: 620px;
-  min-width: 0;
-}
-.chat-header {
-  padding: 24px 28px 20px;
-  border-bottom: 1px solid var(--border);
-}
-.chat-header h1 {
-  font-family: 'Fraunces', serif;
-  font-size: 1.5rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  margin-bottom: 4px;
-}
+/* ═══ VIEW 1: JOB CHAT ═══ */
+#view-job { flex-direction: row; height: 100vh; }
+.chat-panel { flex: 1; display: flex; flex-direction: column; border-right: 1px solid var(--border); max-width: 620px; min-width: 0; }
+.chat-header { padding: 24px 28px 20px; border-bottom: 1px solid var(--border); }
+.chat-header h1 { font-family: 'Fraunces', serif; font-size: 1.5rem; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 4px; }
 .chat-header p { color: var(--text-muted); font-size: 0.875rem; }
-.btn-nova-vaga {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 7px 14px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  color: var(--text-muted);
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 0.78rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  margin-top: 8px;
-}
+.btn-nova-vaga { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface-2); color: var(--text-muted); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.78rem; font-weight: 500; cursor: pointer; transition: all 0.2s; margin-top: 8px; }
 .btn-nova-vaga:hover { border-color: var(--accent); color: var(--accent); }
-.session-restored-banner {
-  background: var(--emerald-dim);
-  border: 1px solid rgba(52,211,153,0.3);
-  border-radius: var(--radius-sm);
-  padding: 12px 16px;
-  font-size: 0.82rem;
-  color: var(--emerald);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.chat-messages {
-  flex: 1;
-  overflow-y: auto;
-  padding: 24px 28px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.msg {
-  display: flex;
-  gap: 12px;
-}
-@media (prefers-reduced-motion: no-preference) {
-  .msg { animation: msgIn 0.3s ease; }
-}
-@keyframes msgIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+.session-restored-banner { background: var(--emerald-dim); border: 1px solid rgba(52,211,153,0.3); border-radius: var(--radius-sm); padding: 12px 16px; font-size: 0.82rem; color: var(--emerald); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.chat-messages { flex: 1; overflow-y: auto; padding: 24px 28px; display: flex; flex-direction: column; gap: 16px; }
+.msg { display: flex; gap: 12px; }
+@media (prefers-reduced-motion: no-preference) { .msg { animation: msgIn 0.3s ease; } }
+@keyframes msgIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 .msg.user { flex-direction: row-reverse; }
-.msg-avatar {
-  width: 32px; height: 32px;
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 0.75rem;
-  font-weight: 700;
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-.msg-avatar.ai {
-  background: var(--accent-dim);
-  color: var(--accent);
-  border: 1px solid var(--accent-glow);
-}
-.msg-avatar.user-av {
-  background: var(--surface-2);
-  color: var(--text-muted);
-  border: 1px solid var(--border);
-}
-.msg-bubble {
-  max-width: 85%;
-  padding: 12px 16px;
-  border-radius: 16px;
-  font-size: 0.875rem;
-  line-height: 1.6;
-  word-break: break-word;
-}
-.msg.ai .msg-bubble {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-top-left-radius: 4px;
-}
-.msg.user .msg-bubble {
-  background: var(--accent);
-  color: #fff;
-  border-top-right-radius: 4px;
-}
-.typing-indicator {
-  display: flex; gap: 4px; align-items: center;
-  padding: 4px 0;
-}
-.typing-dot {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: var(--text-muted);
-  animation: typingPulse 1.4s infinite ease-in-out;
-}
+.msg-avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+.msg-avatar.ai { background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent-glow); }
+.msg-avatar.user-av { background: var(--surface-2); color: var(--text-muted); border: 1px solid var(--border); }
+.msg-bubble { max-width: 85%; padding: 12px 16px; border-radius: 16px; font-size: 0.875rem; line-height: 1.6; word-break: break-word; }
+.msg.ai .msg-bubble { background: var(--surface); border: 1px solid var(--border); border-top-left-radius: 4px; }
+.msg.user .msg-bubble { background: var(--accent); color: #fff; border-top-right-radius: 4px; }
+.typing-indicator { display: flex; gap: 4px; align-items: center; padding: 4px 0; }
+.typing-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); animation: typingPulse 1.4s infinite ease-in-out; }
 .typing-dot:nth-child(2) { animation-delay: 0.2s; }
 .typing-dot:nth-child(3) { animation-delay: 0.4s; }
-@keyframes typingPulse {
-  0%, 60%, 100% { opacity: 0.3; transform: scale(1); }
-  30% { opacity: 1; transform: scale(1.3); }
-}
-.chat-input-area {
-  padding: 16px 28px 24px;
-  border-top: 1px solid var(--border);
-}
-.chat-input-wrap {
-  display: flex;
-  gap: 10px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 12px 14px;
-  transition: border-color 0.2s;
-}
+@keyframes typingPulse { 0%,60%,100% { opacity:0.3;transform:scale(1); } 30% { opacity:1;transform:scale(1.3); } }
+.chat-input-area { padding: 16px 28px 24px; border-top: 1px solid var(--border); }
+.chat-input-wrap { display: flex; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; transition: border-color 0.2s; }
 .chat-input-wrap:focus-within { border-color: var(--accent); }
-#chat-input {
-  flex: 1;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: var(--text);
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 0.875rem;
-  resize: none;
-  max-height: 120px;
-  line-height: 1.5;
-}
+#chat-input { flex: 1; background: transparent; border: none; outline: none; color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.875rem; resize: none; max-height: 120px; line-height: 1.5; }
 #chat-input::placeholder { color: var(--text-muted); }
-.btn-send {
-  width: 36px; height: 36px;
-  border-radius: 8px;
-  background: var(--accent);
-  border: none;
-  color: #fff;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-  transition: opacity 0.2s, transform 0.15s;
-  align-self: flex-end;
-}
+.btn-send { width: 36px; height: 36px; border-radius: 8px; background: var(--accent); border: none; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: opacity 0.2s, transform 0.15s; align-self: flex-end; }
 .btn-send:hover { opacity: 0.85; }
-.btn-send:active { transform: scale(0.93); }
 .btn-send svg { width: 16px; height: 16px; }
 
 /* EXTRACTED PANEL */
-.extracted-panel {
-  width: 380px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.ep-header {
-  padding: 24px 24px 20px;
-  border-bottom: 1px solid var(--border);
-}
-.ep-header h2 {
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
-  margin-bottom: 2px;
-}
-.ep-title {
-  font-family: 'Fraunces', serif;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--text);
-  min-height: 1.4em;
-}
+.extracted-panel { width: 380px; flex-shrink: 0; display: flex; flex-direction: column; overflow: hidden; }
+.ep-header { padding: 24px 24px 20px; border-bottom: 1px solid var(--border); }
+.ep-header h2 { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 2px; }
+.ep-title { font-family: 'Fraunces', serif; font-size: 1.1rem; font-weight: 600; min-height: 1.4em; }
 .ep-title.empty { color: var(--text-subtle); font-style: italic; }
-.ep-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-.ep-section-label {
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--text-muted);
-  margin-bottom: 10px;
-}
-.ep-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.ep-tag {
-  padding: 4px 10px;
-  border-radius: 99px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-}
-@media (prefers-reduced-motion: no-preference) {
-  .ep-tag { animation: tagIn 0.3s ease; }
-}
-@keyframes tagIn {
-  from { opacity: 0; transform: scale(0.9); }
-  to { opacity: 1; transform: scale(1); }
-}
+.ep-body { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 20px; }
+.ep-section-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 10px; }
+.ep-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.ep-tag { padding: 4px 10px; border-radius: 99px; font-size: 0.75rem; font-weight: 500; border: 1px solid var(--border); color: var(--text-muted); }
 .ep-tag.hard { border-color: var(--accent-glow); color: var(--accent); background: var(--accent-dim); }
 .ep-tag.soft { border-color: rgba(52,211,153,0.3); color: var(--emerald); background: var(--emerald-dim); }
-.ep-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  height: 100%;
-  padding: 40px;
-  text-align: center;
-}
+.ep-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; height: 100%; padding: 40px; text-align: center; }
 .ep-empty-icon { font-size: 2rem; opacity: 0.3; }
 .ep-empty p { color: var(--text-muted); font-size: 0.85rem; line-height: 1.6; }
-.btn-next-view {
-  margin: 16px 24px 24px;
-  padding: 13px;
-  background: var(--accent);
-  border: none;
-  border-radius: var(--radius);
-  color: #fff;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-weight: 600;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: opacity 0.2s, transform 0.15s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
+.btn-next-view { margin: 16px 24px 24px; padding: 13px; background: var(--accent); border: none; border-radius: var(--radius); color: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: opacity 0.2s, transform 0.15s; display: flex; align-items: center; justify-content: center; gap: 8px; }
 .btn-next-view:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
 .btn-next-view:disabled { opacity: 0.3; cursor: not-allowed; }
 
-/* ═══════════ VIEW 2: PROFILES ═══════════ */
-#view-profiles {
-  flex-direction: column;
-  background: var(--bg);
-}
-.profiles-layout {
-  display: flex;
-  flex: 1;
-  gap: 0;
-  min-height: calc(100vh - 60px);
-}
-.upload-sidebar {
-  width: 360px;
-  flex-shrink: 0;
-  border-right: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  padding: 28px 24px;
-  gap: 20px;
-  overflow-y: auto;
-}
-.upload-sidebar h2 {
-  font-family: 'Fraunces', serif;
-  font-size: 1.2rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
+/* ═══ VIEW 2: PROFILES ═══ */
+#view-profiles { flex-direction: column; }
+.profiles-layout { display: flex; flex: 1; min-height: calc(100vh - 60px); }
+.upload-sidebar { width: 360px; flex-shrink: 0; border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 28px 24px; gap: 20px; overflow-y: auto; }
+.upload-sidebar h2 { font-family: 'Fraunces', serif; font-size: 1.2rem; font-weight: 600; }
 .upload-sidebar p { color: var(--text-muted); font-size: 0.85rem; line-height: 1.6; }
-.input-tabs {
-  display: flex;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 3px;
-  gap: 2px;
-}
-.tab-btn {
-  flex: 1;
-  padding: 7px;
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 0.78rem;
-  font-weight: 500;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
+.input-tabs { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 3px; gap: 2px; }
+.tab-btn { flex: 1; padding: 7px; border: none; background: transparent; color: var(--text-muted); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.78rem; font-weight: 500; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
 .tab-btn.active { background: var(--surface-2); color: var(--text); }
 .tab-content { display: none; }
 .tab-content.active { display: block; }
-.drop-zone {
-  border: 2px dashed var(--border);
-  border-radius: var(--radius);
-  padding: 28px 20px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.2s;
-  position: relative;
-}
-.drop-zone:hover, .drop-zone.drag-over {
-  border-color: var(--accent);
-  background: var(--accent-dim);
-}
-.drop-zone input[type="file"] {
-  position: absolute; inset: 0;
-  opacity: 0; cursor: pointer;
-}
+.drop-zone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 28px 20px; text-align: center; cursor: pointer; transition: all 0.2s; position: relative; }
+.drop-zone:hover, .drop-zone.drag-over { border-color: var(--accent); background: var(--accent-dim); }
+.drop-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .drop-zone-icon { font-size: 1.8rem; margin-bottom: 10px; }
 .drop-zone p { color: var(--text-muted); font-size: 0.82rem; line-height: 1.6; }
 .drop-zone strong { color: var(--accent); }
-.url-input, .paste-input {
-  width: 100%;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 10px 14px;
-  color: var(--text);
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 0.85rem;
-  outline: none;
-  transition: border-color 0.2s;
-}
+.url-input, .paste-input { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.85rem; outline: none; transition: border-color 0.2s; }
 .url-input:focus, .paste-input:focus { border-color: var(--accent); }
 .paste-input { min-height: 120px; resize: vertical; }
-.btn-add {
-  width: 100%;
-  padding: 9px;
-  margin-top: 10px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text);
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 0.82rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
+.btn-add { width: 100%; padding: 9px; margin-top: 10px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.82rem; font-weight: 500; cursor: pointer; transition: all 0.2s; }
 .btn-add:hover { border-color: var(--accent); color: var(--accent); }
-.queue-label {
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
-}
-.profile-queue {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 220px;
-  overflow-y: auto;
-}
-.queue-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-}
-@media (prefers-reduced-motion: no-preference) {
-  .queue-item { animation: tagIn 0.25s ease; }
-}
+.queue-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
+.profile-queue { display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; }
+.queue-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); }
 .queue-item-icon { font-size: 1rem; flex-shrink: 0; }
-.queue-item-name {
-  flex: 1;
-  font-size: 0.82rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.queue-item-type {
-  font-size: 0.7rem;
-  color: var(--text-muted);
-  font-family: 'Fira Code', monospace;
-}
-.btn-remove-q {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 4px;
-  font-size: 0.9rem;
-  line-height: 1;
-  flex-shrink: 0;
-  transition: color 0.2s;
-  border-radius: 4px;
-}
+.queue-item-name { flex: 1; font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.queue-item-type { font-size: 0.7rem; color: var(--text-muted); font-family: 'Fira Code', monospace; }
+.btn-remove-q { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; font-size: 0.9rem; line-height: 1; flex-shrink: 0; transition: color 0.2s; border-radius: 4px; }
 .btn-remove-q:hover { color: var(--red); }
-.btn-analyze {
-  width: 100%;
-  padding: 13px;
-  background: var(--accent);
-  border: none;
-  border-radius: var(--radius);
-  color: #fff;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-weight: 600;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: opacity 0.2s, transform 0.15s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-top: auto;
-}
+.btn-analyze { width: 100%; padding: 13px; background: var(--accent); border: none; border-radius: var(--radius); color: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: opacity 0.2s, transform 0.15s; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: auto; }
 .btn-analyze:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
 .btn-analyze:disabled { opacity: 0.3; cursor: not-allowed; }
-
-/* Ranking area */
-.ranking-area {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 28px 32px;
-  overflow-y: auto;
-  min-width: 0;
-}
-.ranking-header {
-  display: flex;
-  align-items: baseline;
-  gap: 16px;
-  margin-bottom: 24px;
-}
-.ranking-header h2 {
-  font-family: 'Fraunces', serif;
-  font-size: 1.4rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-.ranking-count {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  font-family: 'Fira Code', monospace;
-}
-.ranking-empty {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  text-align: center;
-  padding: 60px;
-}
+.ranking-area { flex: 1; display: flex; flex-direction: column; padding: 28px 32px; overflow-y: auto; min-width: 0; }
+.ranking-header { display: flex; align-items: baseline; gap: 16px; margin-bottom: 24px; }
+.ranking-header h2 { font-family: 'Fraunces', serif; font-size: 1.4rem; font-weight: 600; }
+.ranking-count { font-size: 0.8rem; color: var(--text-muted); font-family: 'Fira Code', monospace; }
+.ranking-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; text-align: center; padding: 60px; }
 .ranking-empty-icon { font-size: 3rem; opacity: 0.2; }
-.ranking-empty h3 {
-  font-family: 'Fraunces', serif;
-  font-size: 1.2rem;
-  color: var(--text-muted);
-}
+.ranking-empty h3 { font-family: 'Fraunces', serif; font-size: 1.2rem; color: var(--text-muted); }
 .ranking-empty p { color: var(--text-subtle); font-size: 0.85rem; }
-.loading-state {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 24px;
-}
-.loading-spinner {
-  width: 40px; height: 40px;
-  border: 3px solid var(--border);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
+.loading-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; }
+.loading-spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .loading-state p { color: var(--text-muted); font-size: 0.9rem; }
-.candidates-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-/* Candidate card */
-.candidate-card {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 16px 20px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: border-color 0.2s, background 0.2s, transform 0.2s;
-  position: relative;
-}
-@media (prefers-reduced-motion: no-preference) {
-  .candidate-card { animation: cardIn 0.35s ease both; }
-}
-@keyframes cardIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.candidate-card:hover {
-  border-color: var(--accent);
-  background: var(--surface-2);
-  transform: translateX(3px);
-}
-.rank-num {
-  font-family: 'Fira Code', monospace;
-  font-size: 0.75rem;
-  color: var(--text-subtle);
-  width: 24px;
-  flex-shrink: 0;
-  text-align: center;
-}
-.score-ring {
-  flex-shrink: 0;
-  position: relative;
-  width: 52px; height: 52px;
-}
-.score-ring svg {
-  width: 100%; height: 100%;
-  transform: rotate(-90deg);
-}
-.score-ring circle.bg {
-  fill: none;
-  stroke: var(--border);
-  stroke-width: 4;
-}
-.score-ring circle.fg {
-  fill: none;
-  stroke-width: 4;
-  stroke-linecap: round;
-  transition: stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.score-ring .score-val {
-  position: absolute; inset: 0;
-  display: flex; align-items: center; justify-content: center;
-  font-family: 'Fira Code', monospace;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
+.candidates-grid { display: flex; flex-direction: column; gap: 10px; }
+.candidate-card { display: flex; align-items: center; gap: 16px; padding: 16px 20px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; transition: border-color 0.2s, background 0.2s, transform 0.2s; }
+@media (prefers-reduced-motion: no-preference) { .candidate-card { animation: cardIn 0.35s ease both; } }
+@keyframes cardIn { from { opacity:0;transform:translateY(10px); } to { opacity:1;transform:translateY(0); } }
+.candidate-card:hover { border-color: var(--accent); background: var(--surface-2); transform: translateX(3px); }
+.rank-num { font-family: 'Fira Code', monospace; font-size: 0.75rem; color: var(--text-subtle); width: 24px; flex-shrink: 0; text-align: center; }
+.score-ring { flex-shrink: 0; position: relative; width: 52px; height: 52px; }
+.score-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.score-ring circle.bg { fill: none; stroke: var(--border); stroke-width: 4; }
+.score-ring circle.fg { fill: none; stroke-width: 4; stroke-linecap: round; }
 .card-info { flex: 1; min-width: 0; }
-.card-name {
-  font-weight: 600;
-  font-size: 0.9rem;
-  margin-bottom: 3px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.card-role {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-bottom: 6px;
-}
-.card-meta {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.card-tag {
-  font-size: 0.68rem;
-  padding: 2px 8px;
-  border-radius: 99px;
-  font-weight: 500;
-  border: 1px solid;
-}
-.card-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-.badge-rec {
-  font-size: 0.7rem;
-  padding: 4px 10px;
-  border-radius: 99px;
-  font-weight: 600;
-  font-family: 'Fira Code', monospace;
-}
+.card-name { font-weight: 600; font-size: 0.9rem; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-role { font-size: 0.78rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 6px; }
+.card-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+.card-tag { font-size: 0.68rem; padding: 2px 8px; border-radius: 99px; font-weight: 500; border: 1px solid; }
+.card-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.badge-rec { font-size: 0.7rem; padding: 4px 10px; border-radius: 99px; font-weight: 600; font-family: 'Fira Code', monospace; }
 .badge-shortlist { background: var(--emerald-dim); color: var(--emerald); border: 1px solid rgba(52,211,153,0.3); }
 .badge-maybe { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(251,191,36,0.3); }
 .badge-discard { background: var(--red-dim); color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
-.btn-shortlist-card {
-  width: 32px; height: 32px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text-muted);
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1rem;
-  transition: all 0.2s;
-  flex-shrink: 0;
-}
+.btn-shortlist-card { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1rem; transition: all 0.2s; flex-shrink: 0; }
 .btn-shortlist-card:hover { border-color: var(--emerald); color: var(--emerald); }
 .btn-shortlist-card.in-shortlist { border-color: var(--emerald); color: var(--emerald); background: var(--emerald-dim); }
 
 /* MODAL */
-.modal-overlay {
-  position: fixed; inset: 0; z-index: 200;
-  background: rgba(11,12,16,0.85);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-  display: flex; align-items: center; justify-content: center;
-  padding: 40px 20px;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.25s;
-}
+.modal-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(11,12,16,0.85); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; padding: 40px 20px; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
 .modal-overlay.open { opacity: 1; pointer-events: all; }
-.modal {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  width: 100%;
-  max-width: 780px;
-  max-height: 90vh;
-  overflow-y: auto;
-  transform: scale(0.95) translateY(10px);
-  transition: transform 0.25s ease;
-  box-shadow: 0 40px 80px rgba(0,0,0,0.5);
-}
+.modal { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; width: 100%; max-width: 780px; max-height: 90vh; overflow-y: auto; transform: scale(0.95) translateY(10px); transition: transform 0.25s ease; box-shadow: 0 40px 80px rgba(0,0,0,0.5); }
 .modal-overlay.open .modal { transform: scale(1) translateY(0); }
-.modal-header {
-  display: flex;
-  align-items: flex-start;
-  gap: 20px;
-  padding: 28px 28px 24px;
-  border-bottom: 1px solid var(--border);
-  position: sticky; top: 0;
-  background: var(--surface);
-  z-index: 1;
-}
-.modal-score-ring {
-  flex-shrink: 0;
-  position: relative;
-  width: 64px; height: 64px;
-}
-.modal-score-ring svg {
-  width: 64px; height: 64px;
-  transform: rotate(-90deg);
-}
-.modal-score-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-}
+.modal-header { display: flex; align-items: flex-start; gap: 20px; padding: 28px 28px 24px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--surface); z-index: 1; }
+.modal-score-ring { flex-shrink: 0; position: relative; width: 64px; height: 64px; }
+.modal-score-ring svg { width: 64px; height: 64px; transform: rotate(-90deg); }
+.modal-score-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
 .modal-identity { flex: 1; min-width: 0; }
-.modal-identity h2 {
-  font-family: 'Fraunces', serif;
-  font-size: 1.4rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  margin-bottom: 4px;
-}
-.modal-identity p {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  margin-bottom: 10px;
-}
-.modal-meta {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.meta-chip {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  padding: 3px 10px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 99px;
-}
-.meta-chip .icon { font-size: 0.8rem; }
-.modal-close {
-  width: 36px; height: 36px;
-  border-radius: 8px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 1.1rem;
-  display: flex; align-items: center; justify-content: center;
-  transition: all 0.2s;
-  flex-shrink: 0;
-}
-.modal-close:hover { background: var(--red-dim); color: var(--red); border-color: rgba(248,113,113,0.3); }
+.modal-identity h2 { font-family: 'Fraunces', serif; font-size: 1.4rem; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 4px; }
+.modal-identity p { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px; }
+.modal-meta { display: flex; gap: 10px; flex-wrap: wrap; }
+.meta-chip { display: flex; align-items: center; gap: 5px; font-size: 0.75rem; color: var(--text-muted); padding: 3px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 99px; }
+.modal-close { width: 36px; height: 36px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-muted); cursor: pointer; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; }
+.modal-close:hover { background: var(--red-dim); color: var(--red); }
 .modal-body { padding: 24px 28px; display: flex; flex-direction: column; gap: 24px; }
-.modal-section-title {
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--text-muted);
-  margin-bottom: 12px;
-}
-.modal-summary {
-  font-size: 0.9rem;
-  line-height: 1.75;
-  color: var(--text);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px 20px;
-}
+.modal-section-title { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 12px; }
+.modal-summary { font-size: 0.9rem; line-height: 1.75; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; }
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .point-list { display: flex; flex-direction: column; gap: 8px; }
-.point-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  font-size: 0.85rem;
-  line-height: 1.5;
-}
+.point-item { display: flex; align-items: flex-start; gap: 10px; font-size: 0.85rem; line-height: 1.5; }
 .point-icon { flex-shrink: 0; margin-top: 2px; }
 .skill-clusters { display: flex; gap: 12px; flex-wrap: wrap; }
 .skill-cluster { flex: 1; min-width: 120px; }
-.skill-cluster h4 {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
-  margin-bottom: 8px;
-}
+.skill-cluster h4 { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 8px; }
 .skill-tags { display: flex; flex-wrap: wrap; gap: 6px; }
-.skill-tag {
-  font-size: 0.75rem;
-  padding: 4px 10px;
-  border-radius: 99px;
-  font-weight: 500;
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-}
+.skill-tag { font-size: 0.75rem; padding: 4px 10px; border-radius: 99px; font-weight: 500; border: 1px solid var(--border); color: var(--text-muted); }
 .skill-tag.has { border-color: var(--accent-glow); color: var(--accent); background: var(--accent-dim); }
 .skill-tag.soft { border-color: rgba(52,211,153,0.3); color: var(--emerald); background: var(--emerald-dim); }
-.outreach-box {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--accent);
-  border-radius: var(--radius-sm);
-  padding: 14px 16px;
-  font-size: 0.875rem;
-  line-height: 1.6;
-  font-style: italic;
-  color: var(--text-muted);
-}
-.modal-footer {
-  padding: 20px 28px 28px;
-  border-top: 1px solid var(--border);
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-}
-.btn-secondary {
-  padding: 10px 20px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-muted);
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
+.outreach-box { background: var(--bg); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius-sm); padding: 14px 16px; font-size: 0.875rem; line-height: 1.6; font-style: italic; color: var(--text-muted); }
+.modal-footer { padding: 20px 28px 28px; border-top: 1px solid var(--border); display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+.btn-secondary { padding: 10px 20px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: transparent; color: var(--text-muted); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; }
 .btn-secondary:hover { border-color: var(--text-muted); color: var(--text); }
-.btn-primary-modal {
-  padding: 10px 24px;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: var(--emerald);
-  color: #0d1117;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 0.85rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex; align-items: center; gap: 8px;
-}
+.btn-primary-modal { padding: 10px 24px; border: none; border-radius: var(--radius-sm); background: var(--emerald); color: #0d1117; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px; }
 .btn-primary-modal:hover { opacity: 0.88; transform: translateY(-1px); }
 .btn-primary-modal.in-sl { background: var(--surface-2); color: var(--emerald); border: 1px solid var(--emerald-dim); }
 
-/* ═══════════ VIEW 3: SHORTLIST ═══════════ */
+/* ═══ VIEW 3: SHORTLIST ═══ */
 #view-shortlist { flex-direction: column; }
-.shortlist-header {
-  padding: 36px 40px 0;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 24px;
-  flex-wrap: wrap;
-}
-.shortlist-header h1 {
-  font-family: 'Fraunces', serif;
-  font-size: 2rem;
-  font-weight: 600;
-  letter-spacing: -0.03em;
-}
+.shortlist-header { padding: 36px 40px 0; display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+.shortlist-header h1 { font-family: 'Fraunces', serif; font-size: 2rem; font-weight: 600; letter-spacing: -0.03em; }
 .shortlist-header h1 em { font-style: italic; color: var(--accent); }
 .shortlist-header p { color: var(--text-muted); font-size: 0.875rem; margin-top: 4px; }
-.shortlist-toolbar {
-  padding: 24px 40px;
-  display: flex;
-  gap: 10px;
-}
-.btn-view-profiles {
-  padding: 9px 18px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-muted);
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 0.82rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
+.shortlist-toolbar { padding: 24px 40px; display: flex; gap: 10px; }
+.btn-view-profiles { padding: 9px 18px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: transparent; color: var(--text-muted); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.82rem; font-weight: 500; cursor: pointer; transition: all 0.2s; }
 .btn-view-profiles:hover { border-color: var(--accent); color: var(--accent); }
-.shortlist-empty {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  text-align: center;
-  padding: 60px;
-}
-.shortlist-empty h3 {
-  font-family: 'Fraunces', serif;
-  font-size: 1.3rem;
-  color: var(--text-muted);
-}
-.comparison-table {
-  overflow-x: auto;
-  padding: 0 40px 40px;
-}
-.comp-table {
-  width: 100%;
-  min-width: 600px;
-  border-collapse: separate;
-  border-spacing: 0;
-}
-.comp-table th, .comp-table td {
-  padding: 14px 16px;
-  text-align: left;
-  border-bottom: 1px solid var(--border);
-  font-size: 0.85rem;
-  vertical-align: top;
-}
-.comp-table th {
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
-  background: var(--bg);
-}
-.comp-name {
-  font-weight: 600;
-  font-size: 0.9rem;
-  margin-bottom: 4px;
-  color: var(--text);
-}
-.comp-role {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-}
-.comp-score {
-  font-family: 'Fira Code', monospace;
-  font-size: 1.1rem;
-  font-weight: 600;
-}
+.shortlist-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; text-align: center; padding: 60px; }
+.shortlist-empty h3 { font-family: 'Fraunces', serif; font-size: 1.3rem; color: var(--text-muted); }
+.comparison-table { overflow-x: auto; padding: 0 40px 40px; }
+.comp-table { width: 100%; min-width: 600px; border-collapse: separate; border-spacing: 0; }
+.comp-table th, .comp-table td { padding: 14px 16px; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.85rem; vertical-align: top; }
+.comp-table th { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); background: var(--bg); }
+.comp-name { font-weight: 600; font-size: 0.9rem; margin-bottom: 4px; }
+.comp-role { font-size: 0.78rem; color: var(--text-muted); }
+.comp-score { font-family: 'Fira Code', monospace; font-size: 1.1rem; font-weight: 600; }
 .comp-score.high { color: var(--emerald); }
 .comp-score.mid { color: var(--amber); }
 .comp-score.low { color: var(--red); }
-.comp-points {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.comp-points .pt {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  display: flex;
-  gap: 6px;
-  align-items: flex-start;
-}
-.star-row {
-  display: flex;
-  gap: 2px;
-}
-.star {
-  background: none;
-  border: none;
-  font-size: 1.1rem;
-  cursor: pointer;
-  color: var(--border);
-  transition: color 0.15s;
-  padding: 2px;
-  line-height: 1;
-  border-radius: 4px;
-}
+.comp-points { display: flex; flex-direction: column; gap: 4px; }
+.comp-points .pt { font-size: 0.78rem; color: var(--text-muted); display: flex; gap: 6px; align-items: flex-start; }
+.star-row { display: flex; gap: 2px; }
+.star { background: none; border: none; font-size: 1.1rem; cursor: pointer; color: var(--border); transition: color 0.15s; padding: 2px; line-height: 1; border-radius: 4px; }
 .star.lit { color: var(--amber); }
 .star:hover { color: var(--amber); }
-.btn-remove-sl {
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 0.75rem;
-  padding: 4px 8px;
-  transition: all 0.2s;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-}
+.btn-remove-sl { background: none; border: 1px solid var(--border); border-radius: 6px; color: var(--text-muted); cursor: pointer; font-size: 0.75rem; padding: 4px 8px; transition: all 0.2s; font-family: 'Plus Jakarta Sans', sans-serif; }
 .btn-remove-sl:hover { border-color: var(--red); color: var(--red); }
 
-/* utils */
 .hidden { display: none !important; }
 .divider { height: 1px; background: var(--border); width: 100%; }
 
-/* ═══════════ RESPONSIVIDADE MOBILE ═══════════ */
-@media (max-width: 1024px) {
-  .chat-panel { max-width: 100%; }
-  .extracted-panel { width: 320px; }
-  .upload-sidebar { width: 300px; }
-  .ranking-area { padding: 20px; }
-  .shortlist-header { padding: 24px 20px 0; }
-  .shortlist-toolbar { padding: 16px 20px; }
-  .comparison-table { padding: 0 20px 20px; }
-}
-
 @media (max-width: 768px) {
   .nav { padding: 0 16px; }
-  .nav-steps { gap: 0; }
-  .step-btn { padding: 6px 12px; font-size: 0.72rem; }
-  .step-btn .step-num { width: 18px; height: 18px; font-size: 0.65rem; }
-
-  #view-job {
-    flex-direction: column;
-    height: auto;
-    min-height: 100vh;
-  }
-  .chat-panel {
-    max-width: 100%;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-    min-height: 60vh;
-  }
-  .extracted-panel {
-    width: 100%;
-    max-height: 50vh;
-  }
-  .chat-header { padding: 16px 16px 12px; }
-  .chat-messages { padding: 16px; }
-  .chat-input-area { padding: 12px 16px 16px; }
-  .ep-header { padding: 16px; }
-  .ep-body { padding: 16px; }
-  .btn-next-view { margin: 12px 16px 16px; }
-
-  .profiles-layout {
-    flex-direction: column;
-    min-height: auto;
-  }
-  .upload-sidebar {
-    width: 100%;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-    padding: 20px 16px;
-    gap: 14px;
-  }
+  .nav-user-email { display: none; }
+  #view-job { flex-direction: column; height: auto; min-height: 100vh; }
+  .chat-panel { max-width: 100%; border-right: none; border-bottom: 1px solid var(--border); min-height: 60vh; }
+  .extracted-panel { width: 100%; max-height: 50vh; }
+  .profiles-layout { flex-direction: column; min-height: auto; }
+  .upload-sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border); padding: 20px 16px; gap: 14px; }
   .ranking-area { padding: 20px 16px; }
-  .profile-queue { max-height: 160px; }
-
-  .modal-overlay { padding: 10px; }
-  .modal { border-radius: 14px; max-height: 95vh; }
-  .modal-header { padding: 20px 20px 16px; gap: 14px; }
-  .modal-body { padding: 16px 20px; }
-  .modal-footer { padding: 16px 20px 20px; }
   .two-col { grid-template-columns: 1fr; }
-
   .shortlist-header { padding: 20px 16px 0; }
-  .shortlist-header h1 { font-size: 1.5rem; }
   .shortlist-toolbar { padding: 12px 16px; }
   .comparison-table { padding: 0 16px 24px; }
 }
-
 @media (max-width: 480px) {
-  .nav-badge { display: none; }
   .step-btn span:not(.step-num) { display: none; }
   .step-btn { padding: 6px 10px; }
   .card-actions .badge-rec { display: none; }
@@ -1153,185 +300,180 @@ button:focus-visible, a:focus-visible { border-radius: var(--radius-sm); }
 </head>
 <body>
 
-<!-- NAV -->
-<nav class="nav" role="navigation" aria-label="Etapas do processo">
-  <div class="nav-logo" aria-label="AndHiring">And<span>Hiring</span></div>
-  <div class="nav-steps" role="tablist">
-    <button class="step-btn active" id="nav-step-1" role="tab" aria-selected="true" aria-controls="view-job" onclick="goToView('job')">
-      <span class="step-num" aria-hidden="true">1</span> Vaga
+<!-- ═══ LOGIN ═══ -->
+<div id="view-login">
+  <div class="login-card">
+    <div class="login-logo">And<span>Hiring</span></div>
+    <p>Plataforma de triagem inteligente de candidatos com IA.<br>Entre com seu e-mail para acessar.</p>
+    <label class="login-label" for="login-email">E-mail</label>
+    <input class="login-input" id="login-email" type="email" placeholder="seu@email.com" autocomplete="email">
+    <button class="btn-login" id="btn-login">
+      <span id="btn-login-text">Enviar link de acesso</span>
     </button>
-    <button class="step-btn" id="nav-step-2" role="tab" aria-selected="false" aria-controls="view-profiles" onclick="goToView('profiles')" disabled>
-      <span class="step-num" aria-hidden="true">2</span> Perfis
-    </button>
-    <button class="step-btn" id="nav-step-3" role="tab" aria-selected="false" aria-controls="view-shortlist" onclick="goToView('shortlist')" disabled>
-      <span class="step-num" aria-hidden="true">3</span> Shortlist
-    </button>
+    <div class="login-feedback" id="login-feedback"></div>
+    <div class="login-divider"></div>
+    <div class="login-footer">Você receberá um link mágico por e-mail.<br>Não é necessário criar senha.</div>
   </div>
-  <span class="nav-badge" aria-label="Versão 3.1">v3.1</span>
-</nav>
+</div>
 
-<!-- ═══ VIEW 1: JOB CHAT ═══ -->
-<main id="view-job" class="view active" role="main" aria-label="Análise da vaga">
-  <div class="chat-panel">
-    <div class="chat-header">
-      <h1>Análise da Vaga</h1>
-      <p>Descreva a posição. Vou identificar requisitos, competências e o perfil ideal.</p>
+<!-- ═══ APP ═══ -->
+<div id="app">
+  <nav class="nav">
+    <div class="nav-logo">And<span>Hiring</span></div>
+    <div class="nav-steps">
+      <button class="step-btn active" id="nav-step-1" onclick="goToView('job')">
+        <span class="step-num">1</span> Vaga
+      </button>
+      <button class="step-btn" id="nav-step-2" onclick="goToView('profiles')" disabled>
+        <span class="step-num">2</span> Perfis
+      </button>
+      <button class="step-btn" id="nav-step-3" onclick="goToView('shortlist')" disabled>
+        <span class="step-num">3</span> Shortlist
+      </button>
     </div>
-    <div class="chat-messages" id="chat-messages" role="log" aria-live="polite" aria-label="Conversa">
-      <div class="msg ai">
-        <div class="msg-avatar ai" aria-hidden="true">AI</div>
-        <div class="msg-bubble">
-          Olá! Sou seu triador senior de candidatos.<br><br>
-          Cole a descrição da vaga ou me conte sobre a posição que você precisa preencher. Posso trabalhar com JD completo, um briefing rápido ou qualquer formato — vou fazer as perguntas certas para montar o perfil ideal.
+    <div class="nav-right">
+      <span class="nav-badge">v3.2</span>
+      <div class="nav-user">
+        <span class="nav-user-email" id="nav-user-email">—</span>
+        <button class="btn-logout" onclick="logout()">Sair</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- VIEW 1 -->
+  <main id="view-job" class="view active">
+    <div class="chat-panel">
+      <div class="chat-header">
+        <h1>Análise da Vaga</h1>
+        <p>Descreva a posição. Vou identificar requisitos, competências e o perfil ideal.</p>
+      </div>
+      <div class="chat-messages" id="chat-messages" role="log" aria-live="polite">
+        <div class="msg ai">
+          <div class="msg-avatar ai">AI</div>
+          <div class="msg-bubble">Olá! Sou seu triador senior de candidatos.<br><br>Cole a descrição da vaga ou me conte sobre a posição que você precisa preencher. Posso trabalhar com JD completo, um briefing rápido ou qualquer formato — vou fazer as perguntas certas para montar o perfil ideal.</div>
+        </div>
+      </div>
+      <div class="chat-input-area">
+        <div class="chat-input-wrap">
+          <textarea id="chat-input" placeholder="Cole a JD aqui ou descreva a vaga..." rows="2"></textarea>
+          <button class="btn-send" id="btn-send">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/></svg>
+          </button>
         </div>
       </div>
     </div>
-    <div class="chat-input-area">
-      <div class="chat-input-wrap">
-        <textarea id="chat-input" placeholder="Cole a JD aqui ou descreva a vaga..." rows="2" aria-label="Mensagem"></textarea>
-        <button class="btn-send" id="btn-send" aria-label="Enviar mensagem">
-          <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/></svg>
-        </button>
+    <aside class="extracted-panel">
+      <div class="ep-header">
+        <h2>Requisitos Extraídos</h2>
+        <div class="ep-title empty" id="ep-title">Aguardando análise...</div>
       </div>
-    </div>
-  </div>
-
-  <aside class="extracted-panel" aria-label="Requisitos extraídos">
-    <div class="ep-header">
-      <h2>Requisitos Extraídos</h2>
-      <div class="ep-title empty" id="ep-title">Aguardando análise...</div>
-    </div>
-    <div class="ep-body" id="ep-body">
-      <div class="ep-empty">
-        <div class="ep-empty-icon" aria-hidden="true">🎯</div>
-        <p>Os requisitos, hard skills e soft skills aparecerão aqui conforme a conversa evolui.</p>
-      </div>
-    </div>
-    <button class="btn-next-view" id="btn-to-profiles" disabled onclick="goToView('profiles')" aria-label="Avançar para análise de perfis">
-      Avançar para Análise de Perfis →
-    </button>
-  </aside>
-</main>
-
-<!-- ═══ VIEW 2: PROFILES ═══ -->
-<div id="view-profiles" class="view" role="main" aria-label="Análise de perfis">
-  <div class="profiles-layout">
-    <aside class="upload-sidebar" aria-label="Inserir candidatos">
-      <div>
-        <h2>Inserir Candidatos</h2>
-        <p>Adicione perfis por link do LinkedIn, CV em PDF/Word, ou cole a transcrição de uma entrevista.</p>
-      </div>
-
-      <div class="input-tabs" role="tablist" aria-label="Método de inserção">
-        <button class="tab-btn active" role="tab" aria-selected="true" aria-controls="tab-url" onclick="switchTab('url')">🔗 LinkedIn</button>
-        <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-file" onclick="switchTab('file')">📎 Arquivo</button>
-        <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-text" onclick="switchTab('text')">📝 Texto</button>
-      </div>
-
-      <div id="tab-url" class="tab-content active" role="tabpanel">
-        <label for="url-input" class="hidden">URL do LinkedIn</label>
-        <input class="url-input" id="url-input" type="url" placeholder="linkedin.com/in/nome-candidato" aria-label="URL do perfil LinkedIn">
-        <button class="btn-add" onclick="addFromUrl()">+ Adicionar candidato</button>
-      </div>
-
-      <div id="tab-file" class="tab-content" role="tabpanel">
-        <div class="drop-zone" id="drop-zone">
-          <input type="file" id="file-input" accept=".pdf,.doc,.docx" multiple aria-label="Selecionar arquivos PDF ou Word">
-          <div class="drop-zone-icon" aria-hidden="true">📁</div>
-          <p>Arraste arquivos aqui ou <strong>clique para selecionar</strong><br>PDF, Word (.docx) aceitos</p>
+      <div class="ep-body" id="ep-body">
+        <div class="ep-empty">
+          <div class="ep-empty-icon">🎯</div>
+          <p>Os requisitos, hard skills e soft skills aparecerão aqui conforme a conversa evolui.</p>
         </div>
       </div>
-
-      <div id="tab-text" class="tab-content" role="tabpanel">
-        <label for="text-input" class="hidden">Conteúdo do currículo</label>
-        <textarea class="paste-input" id="text-input" placeholder="Cole o currículo, perfil LinkedIn ou transcrição de entrevista aqui..." aria-label="Conteúdo do candidato"></textarea>
-        <label for="text-name-input" class="hidden">Nome do candidato</label>
-        <input class="url-input" id="text-name-input" type="text" placeholder="Nome do candidato" style="margin-top:8px" aria-label="Nome do candidato">
-        <button class="btn-add" onclick="addFromText()">+ Adicionar candidato</button>
-      </div>
-
-      <div class="divider"></div>
-
-      <div class="queue-label" id="queue-label" style="display:none" aria-live="polite">
-        Fila de análise — <span id="queue-count">0</span> perfis
-      </div>
-      <div class="profile-queue" id="profile-queue" role="list" aria-label="Candidatos na fila"></div>
-
-      <button class="btn-analyze" id="btn-analyze" disabled onclick="analyzeProfiles()" aria-label="Analisar candidatos com IA">
-        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.79 0 3.43.63 4.5 1.65V4.804zM11 17.65c1.07-1.02 2.71-1.65 4.5-1.65 1.255 0 2.443.29 3.5.804v-10A7.969 7.969 0 0015.5 6c-1.255 0-2.443.29-3.5.804V17.65z"/></svg>
-        Analisar Candidatos
+      <button class="btn-next-view" id="btn-to-profiles" disabled onclick="goToView('profiles')">
+        Avançar para Análise de Perfis →
       </button>
     </aside>
+  </main>
 
-    <section class="ranking-area" aria-label="Ranking de candidatos">
-      <div class="ranking-header">
-        <h2>Ranking de Aderência</h2>
-        <span class="ranking-count" id="ranking-count" aria-live="polite"></span>
-      </div>
-
-      <div class="ranking-empty" id="ranking-empty">
-        <div class="ranking-empty-icon" aria-hidden="true">🏆</div>
-        <h3>Nenhum candidato analisado</h3>
-        <p>Adicione perfis ao lado e clique em Analisar</p>
-      </div>
-
-      <div class="loading-state hidden" id="loading-state" role="status" aria-live="polite">
-        <div class="loading-spinner" aria-hidden="true"></div>
-        <p id="loading-msg">Analisando candidatos com IA...</p>
-      </div>
-
-      <div class="candidates-grid hidden" id="candidates-grid" role="list" aria-label="Candidatos rankeados"></div>
-    </section>
-  </div>
-</div>
-
-<!-- ═══ VIEW 3: SHORTLIST ═══ -->
-<div id="view-shortlist" class="view" role="main" aria-label="Shortlist de candidatos">
-  <div class="shortlist-header">
-    <div>
-      <h1>Shortlist <em>&</em> Decisão</h1>
-      <p>Compare os finalistas lado a lado e marque quem avança no processo.</p>
+  <!-- VIEW 2 -->
+  <div id="view-profiles" class="view">
+    <div class="profiles-layout">
+      <aside class="upload-sidebar">
+        <div>
+          <h2>Inserir Candidatos</h2>
+          <p>Adicione perfis por link do LinkedIn, CV em PDF/Word, ou cole a transcrição de uma entrevista.</p>
+        </div>
+        <div class="input-tabs">
+          <button class="tab-btn active" onclick="switchTab('url')">🔗 LinkedIn</button>
+          <button class="tab-btn" onclick="switchTab('file')">📎 Arquivo</button>
+          <button class="tab-btn" onclick="switchTab('text')">📝 Texto</button>
+        </div>
+        <div id="tab-url" class="tab-content active">
+          <input class="url-input" id="url-input" type="url" placeholder="linkedin.com/in/nome-candidato">
+          <button class="btn-add" onclick="addFromUrl()">+ Adicionar candidato</button>
+        </div>
+        <div id="tab-file" class="tab-content">
+          <div class="drop-zone" id="drop-zone">
+            <input type="file" id="file-input" accept=".pdf,.doc,.docx" multiple>
+            <div class="drop-zone-icon">📁</div>
+            <p>Arraste arquivos aqui ou <strong>clique para selecionar</strong><br>PDF, Word (.docx) aceitos</p>
+          </div>
+        </div>
+        <div id="tab-text" class="tab-content">
+          <textarea class="paste-input" id="text-input" placeholder="Cole o currículo, perfil LinkedIn ou transcrição de entrevista aqui..."></textarea>
+          <input class="url-input" id="text-name-input" type="text" placeholder="Nome do candidato" style="margin-top:8px">
+          <button class="btn-add" onclick="addFromText()">+ Adicionar candidato</button>
+        </div>
+        <div class="divider"></div>
+        <div class="queue-label" id="queue-label" style="display:none">Fila de análise — <span id="queue-count">0</span> perfis</div>
+        <div class="profile-queue" id="profile-queue" role="list"></div>
+        <button class="btn-analyze" id="btn-analyze" disabled onclick="analyzeProfiles()">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.79 0 3.43.63 4.5 1.65V4.804zM11 17.65c1.07-1.02 2.71-1.65 4.5-1.65 1.255 0 2.443.29 3.5.804v-10A7.969 7.969 0 0015.5 6c-1.255 0-2.443.29-3.5.804V17.65z"/></svg>
+          Analisar Candidatos
+        </button>
+      </aside>
+      <section class="ranking-area">
+        <div class="ranking-header">
+          <h2>Ranking de Aderência</h2>
+          <span class="ranking-count" id="ranking-count"></span>
+        </div>
+        <div class="ranking-empty" id="ranking-empty">
+          <div class="ranking-empty-icon">🏆</div>
+          <h3>Nenhum candidato analisado</h3>
+          <p>Adicione perfis ao lado e clique em Analisar</p>
+        </div>
+        <div class="loading-state hidden" id="loading-state" role="status">
+          <div class="loading-spinner"></div>
+          <p id="loading-msg">Analisando candidatos com IA...</p>
+        </div>
+        <div class="candidates-grid hidden" id="candidates-grid" role="list"></div>
+      </section>
     </div>
-    <div>
+  </div>
+
+  <!-- VIEW 3 -->
+  <div id="view-shortlist" class="view">
+    <div class="shortlist-header">
+      <div>
+        <h1>Shortlist <em>&</em> Decisão</h1>
+        <p>Compare os finalistas lado a lado e marque quem avança no processo.</p>
+      </div>
       <button class="btn-view-profiles" onclick="goToView('profiles')">← Voltar aos perfis</button>
     </div>
-  </div>
-  <div class="shortlist-toolbar">
-    <span style="font-size:0.8rem;color:var(--text-muted)" id="sl-count" aria-live="polite"></span>
-  </div>
-  <div class="shortlist-empty" id="shortlist-empty">
-    <div class="ranking-empty-icon" aria-hidden="true">⭐</div>
-    <h3>Shortlist vazia</h3>
-    <p style="color:var(--text-subtle);font-size:0.85rem">Abra o perfil de um candidato e clique em "Adicionar à Shortlist"</p>
-  </div>
-  <div class="comparison-table hidden" id="comparison-table">
-    <table class="comp-table" aria-label="Comparação de candidatos na shortlist">
-      <thead>
-        <tr>
-          <th scope="col">Candidato</th>
-          <th scope="col">Score</th>
-          <th scope="col">Pontos Fortes</th>
-          <th scope="col">Pontos de Atenção</th>
-          <th scope="col">Estrelas</th>
-          <th scope="col"><span class="hidden">Ações</span></th>
-        </tr>
-      </thead>
-      <tbody id="comp-tbody"></tbody>
-    </table>
+    <div class="shortlist-toolbar">
+      <span style="font-size:0.8rem;color:var(--text-muted)" id="sl-count"></span>
+    </div>
+    <div class="shortlist-empty" id="shortlist-empty">
+      <div class="ranking-empty-icon">⭐</div>
+      <h3>Shortlist vazia</h3>
+      <p style="color:var(--text-subtle);font-size:0.85rem">Abra o perfil de um candidato e clique em "Adicionar à Shortlist"</p>
+    </div>
+    <div class="comparison-table hidden" id="comparison-table">
+      <table class="comp-table">
+        <thead>
+          <tr><th>Candidato</th><th>Score</th><th>Pontos Fortes</th><th>Pontos de Atenção</th><th>Estrelas</th><th></th></tr>
+        </thead>
+        <tbody id="comp-tbody"></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
-<!-- MODAL: Detalhe do candidato -->
-<div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-name">
-  <div class="modal" id="modal">
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true">
+  <div class="modal">
     <div class="modal-header">
-      <div class="modal-score-ring" aria-hidden="true">
-        <svg width="64" height="64" viewBox="0 0 64 64" id="modal-score-svg">
-          <circle class="bg" cx="32" cy="32" r="26" />
-          <circle class="fg" id="modal-score-circle" cx="32" cy="32" r="26" stroke-dasharray="163.36" stroke-dashoffset="163.36" />
+      <div class="modal-score-ring">
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <circle class="bg" cx="32" cy="32" r="26"/>
+          <circle class="fg" id="modal-score-circle" cx="32" cy="32" r="26" stroke-dasharray="163.36" stroke-dashoffset="163.36"/>
         </svg>
         <div class="modal-score-overlay">
-          <span id="modal-score-val" style="font-family:'Fira Code',monospace;font-size:0.85rem;font-weight:600;color:var(--text)"></span>
+          <span id="modal-score-val" style="font-family:'Fira Code',monospace;font-size:0.85rem;font-weight:600"></span>
         </div>
       </div>
       <div class="modal-identity">
@@ -1339,109 +481,148 @@ button:focus-visible, a:focus-visible { border-radius: var(--radius-sm); }
         <p id="modal-role">—</p>
         <div class="modal-meta" id="modal-meta"></div>
       </div>
-      <button class="modal-close" onclick="closeModal()" aria-label="Fechar modal">✕</button>
+      <button class="modal-close" onclick="closeModal()">✕</button>
     </div>
     <div class="modal-body" id="modal-body"></div>
     <div class="modal-footer">
       <button class="btn-secondary" onclick="closeModal()">Fechar</button>
-      <a id="modal-linkedin-btn" href="#" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="text-decoration:none;display:none;align-items:center;gap:6px;" aria-label="Abrir perfil no LinkedIn">🔗 LinkedIn</a>
+      <a id="modal-linkedin-btn" href="#" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="text-decoration:none;display:none;align-items:center;gap:6px;">🔗 LinkedIn</a>
       <button class="btn-primary-modal" id="btn-modal-shortlist" onclick="toggleShortlistFromModal()">⭐ Adicionar à Shortlist</button>
     </div>
   </div>
 </div>
 
 <script>
+// ═══ SUPABASE ═══
+const SUPABASE_URL = 'https://rpdlnnogiciybdzmoubi.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJwZGxubm9naWNpeWJkem1vdWJpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MjU5MDcsImV4cCI6MjA4OTEwMTkwN30.h7yZC8msSABl8xRKaTbbpXH6WexemC1JV1oJonMF0AY';
+const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 // ═══ CONFIG ═══
 const CONFIG = {
   JOB_CHAT_WEBHOOK:  'https://primary-production-0fd8.up.railway.app/webhook/agente-vaga',
   ANALYZE_WEBHOOK:   'https://primary-production-0fd8.up.railway.app/webhook/analyze-profiles',
   SHORTLIST_WEBHOOK: 'https://primary-production-0fd8.up.railway.app/webhook/shortlist',
-  DEMO_MODE: false,
 };
 
-// ═══ PERSISTÊNCIA DE SESSÃO ═══
+// ═══ AUTH ═══
+let currentUser = null;
+
+async function initAuth() {
+  const { data: { session } } = await _supabase.auth.getSession();
+  if (session) {
+    currentUser = session.user;
+    showApp();
+  } else {
+    showLogin();
+  }
+  _supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_IN' && session) {
+      currentUser = session.user;
+      showApp();
+    } else if (event === 'SIGNED_OUT') {
+      currentUser = null;
+      showLogin();
+    }
+  });
+}
+
+function showLogin() {
+  document.getElementById('view-login').classList.add('active');
+  document.getElementById('app').classList.remove('active');
+}
+
+function showApp() {
+  document.getElementById('view-login').classList.remove('active');
+  document.getElementById('app').classList.add('active');
+  document.getElementById('nav-user-email').textContent = currentUser?.email || '—';
+  restoreSessionIfExists();
+}
+
+async function sendMagicLink() {
+  const email = document.getElementById('login-email').value.trim();
+  if (!email) return;
+  const btn = document.getElementById('btn-login');
+  const feedback = document.getElementById('login-feedback');
+  btn.disabled = true;
+  document.getElementById('btn-login-text').textContent = 'Enviando...';
+  feedback.className = 'login-feedback';
+  const { error } = await _supabase.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: window.location.href }
+  });
+  if (error) {
+    feedback.className = 'login-feedback error';
+    feedback.textContent = 'Erro ao enviar o link. Verifique o e-mail e tente novamente.';
+    btn.disabled = false;
+    document.getElementById('btn-login-text').textContent = 'Enviar link de acesso';
+  } else {
+    feedback.className = 'login-feedback success';
+    feedback.textContent = '✅ Link enviado! Verifique sua caixa de entrada (e o spam).';
+    document.getElementById('btn-login-text').textContent = 'Link enviado';
+  }
+}
+
+async function logout() {
+  await _supabase.auth.signOut();
+  clearSession();
+}
+
+// ═══ SESSÃO ═══
 const SESSION_KEY = 'andhiring_session';
-
 function saveSession() {
-  try {
-    localStorage.setItem(SESSION_KEY, JSON.stringify({
-      sessionId: state.sessionId,
-      jobId: state.jobId,
-      jobComplete: state.jobComplete,
-      extractedData: state.extractedData,
-      chatHistory: state.chatHistory,
-    }));
-  } catch (e) { /* silencioso */ }
+  try { localStorage.setItem(SESSION_KEY, JSON.stringify({ sessionId: state.sessionId, jobId: state.jobId, jobComplete: state.jobComplete, extractedData: state.extractedData, chatHistory: state.chatHistory })); } catch(e) {}
 }
-
 function loadSession() {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch (e) { return null; }
+  try { const r = localStorage.getItem(SESSION_KEY); return r ? JSON.parse(r) : null; } catch(e) { return null; }
 }
-
 function clearSession() {
-  try { localStorage.removeItem(SESSION_KEY); } catch (e) { /* silencioso */ }
+  try { localStorage.removeItem(SESSION_KEY); } catch(e) {}
 }
-
-const _saved = loadSession();
 
 // ═══ STATE ═══
 const state = {
-  sessionId: _saved?.sessionId || crypto.randomUUID(),
-  jobId: _saved?.jobId || null,
-  jobComplete: _saved?.jobComplete || false,
-  chatHistory: _saved?.chatHistory || [],
-  extractedData: _saved?.extractedData || { title: '', hard_skills: [], soft_skills: [], requirements: [], persona: '' },
-  profiles: [],
-  candidates: [],
-  shortlist: [],
-  stars: {},
-  currentModal: null,
+  sessionId: crypto.randomUUID(), jobId: null, jobComplete: false, chatHistory: [],
+  extractedData: { title: '', hard_skills: [], soft_skills: [], requirements: [] },
+  profiles: [], candidates: [], shortlist: [], stars: {}, currentModal: null,
 };
 
+function restoreSessionIfExists() {
+  const saved = loadSession();
+  if (!saved) return;
+  state.sessionId = saved.sessionId || state.sessionId;
+  state.jobId = saved.jobId || null;
+  state.jobComplete = saved.jobComplete || false;
+  state.chatHistory = saved.chatHistory || [];
+  state.extractedData = saved.extractedData || state.extractedData;
+  if (state.jobComplete && state.jobId) {
+    document.getElementById('btn-to-profiles').disabled = false;
+    document.getElementById('nav-step-2').disabled = false;
+    if (state.extractedData?.title) updateExtractedPanel(state.extractedData);
+    const banner = document.createElement('div');
+    banner.className = 'session-restored-banner';
+    banner.innerHTML = `<span>✅ Sessão restaurada — <strong>${escapeHTML(state.extractedData?.title || 'vaga anterior')}</strong>. Continue ou inicie uma nova vaga.</span><button class="btn-nova-vaga" onclick="startNovaVaga()">+ Nova Vaga</button>`;
+    document.getElementById('chat-messages').appendChild(banner);
+  }
+}
+
 // ═══ HELPERS ═══
-function escapeHTML(str) {
-  const d = document.createElement('div');
-  d.textContent = String(str ?? '');
-  return d.innerHTML;
-}
-
-function scoreColor(score) {
-  return score >= 80 ? 'var(--emerald)' : score >= 50 ? 'var(--amber)' : 'var(--red)';
-}
-
-function scoreClass(score) {
-  return score >= 80 ? 'high' : score >= 50 ? 'mid' : 'low';
-}
-
-function safeUrl(raw) {
-  try {
-    const u = new URL(raw.startsWith('http') ? raw : 'https://' + raw);
-    if (u.protocol !== 'https:' && u.protocol !== 'http:') return null;
-    return u.href;
-  } catch { return null; }
-}
+function escapeHTML(str) { const d = document.createElement('div'); d.textContent = String(str ?? ''); return d.innerHTML; }
+function scoreColor(s) { return s >= 80 ? 'var(--emerald)' : s >= 50 ? 'var(--amber)' : 'var(--red)'; }
+function scoreClass(s) { return s >= 80 ? 'high' : s >= 50 ? 'mid' : 'low'; }
+function safeUrl(raw) { try { const u = new URL(raw.startsWith('http') ? raw : 'https://' + raw); if (u.protocol !== 'https:' && u.protocol !== 'http:') return null; return u.href; } catch { return null; } }
 
 // ═══ NAVEGAÇÃO ═══
 function goToView(name) {
   if (name === 'profiles' && !state.jobComplete) return;
   if (name === 'shortlist') renderShortlist();
-
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-' + name).classList.add('active');
-
-  ['job', 'profiles', 'shortlist'].forEach((v, i) => {
-    const btn = document.getElementById('nav-step-' + (i + 1));
-    btn.classList.remove('active', 'done');
-    btn.setAttribute('aria-selected', v === name ? 'true' : 'false');
+  ['job','profiles','shortlist'].forEach((v, i) => {
+    const btn = document.getElementById('nav-step-' + (i+1));
+    btn.classList.remove('active','done');
     if (v === name) btn.classList.add('active');
-    else if (
-      (v === 'job' && (name === 'profiles' || name === 'shortlist')) ||
-      (v === 'profiles' && name === 'shortlist')
-    ) btn.classList.add('done');
+    else if ((v==='job' && (name==='profiles'||name==='shortlist')) || (v==='profiles'&&name==='shortlist')) btn.classList.add('done');
   });
 }
 
@@ -1450,927 +631,293 @@ function sendMessage() {
   const inp = document.getElementById('chat-input');
   const text = inp.value.trim();
   if (!text) return;
-  inp.value = '';
-  inp.style.height = 'auto';
-
+  inp.value = ''; inp.style.height = 'auto';
   appendMsg('user', text);
   state.chatHistory.push({ role: 'user', content: text });
   showTyping();
-
-  if (CONFIG.DEMO_MODE) {
-    demoChat(text);
-    return;
-  }
-
   fetch(CONFIG.JOB_CHAT_WEBHOOK, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ session_id: state.sessionId, message: text }),
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_id: state.sessionId, message: text, client_id: currentUser?.id || null }),
   })
-  .then(r => {
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    return r.json();
-  })
+  .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
   .then(data => {
     hideTyping();
-    if (!data || typeof data.reply !== 'string') throw new Error('Resposta inválida');
+    if (!data || typeof data.reply !== 'string') throw new Error('Inválido');
     appendMsg('ai', data.reply);
     state.chatHistory.push({ role: 'assistant', content: data.reply });
     if (data.extracted) updateExtractedPanel(data.extracted);
     if (data.complete) {
-      state.jobComplete = true;
-      state.jobId = data.job_id;
+      state.jobComplete = true; state.jobId = data.job_id;
       document.getElementById('btn-to-profiles').disabled = false;
       document.getElementById('nav-step-2').disabled = false;
       saveSession();
     }
   })
-  .catch(() => {
-    hideTyping();
-    appendMsg('ai', 'Não foi possível processar sua mensagem. Verifique sua conexão e tente novamente.');
-  });
-}
-
-// Demo
-let demoStep = 0;
-const demoResponses = [
-  {
-    reply: 'Entendi! Analisando a descrição...\n\nIdentifiquei os principais pontos. Antes de montar o perfil ideal, tenho algumas perguntas:\n\n1. Qual o nível de senioridade? (Júnior, Pleno, Senior, Especialista?)\n2. A posição é remota, híbrida ou presencial?\n3. Há alguma vertical de indústria prioritária?',
-    extracted: { title: 'Identificando...', hard_skills: [], soft_skills: [], requirements: [] }
-  },
-  {
-    reply: 'Perfeito. Uma última pergunta: existe algum ponto eliminatório absoluto? Por exemplo, obrigatoriedade de inglês fluente, certificação específica ou experiência mínima em uma ferramenta?',
-    extracted: {
-      title: 'Vaga identificada',
-      hard_skills: ['Python', 'SQL', 'Machine Learning', 'APIs REST', 'Cloud (AWS/GCP)'],
-      soft_skills: ['Comunicação técnica', 'Autonomia', 'Pensamento analítico'],
-      requirements: ['3+ anos de experiência', 'Formação em Exatas ou Tecnologia', 'Inglês intermediário']
-    }
-  },
-  {
-    reply: 'Perfeito. O perfil está completo.\n\n**Persona ideal construída:** Profissional sênior com sólida base técnica, histórico comprovado de entrega em ambientes de alta pressão, capaz de comunicar resultados complexos para stakeholders não-técnicos.\n\nPode avançar para inserir os candidatos.',
-    extracted: {
-      title: 'ANALISTA DE DADOS SR.',
-      hard_skills: ['Python', 'SQL', 'Machine Learning', 'APIs REST', 'Cloud (AWS/GCP)', 'dbt', 'Looker/Tableau'],
-      soft_skills: ['Comunicação técnica', 'Autonomia', 'Pensamento analítico', 'Gestão de stakeholders', 'Proatividade'],
-      requirements: ['3+ anos de experiência', 'Formação em Exatas ou Tecnologia', 'Inglês intermediário', 'Experiência com pipelines de dados']
-    },
-    complete: true
-  }
-];
-
-function demoChat(msg) {
-  setTimeout(() => {
-    hideTyping();
-    const resp = demoResponses[Math.min(demoStep, demoResponses.length - 1)];
-    appendMsg('ai', resp.reply);
-    state.chatHistory.push({ role: 'assistant', content: resp.reply });
-    updateExtractedPanel(resp.extracted);
-    if (resp.complete) {
-      state.jobComplete = true;
-      state.jobId = 'demo-job-' + state.sessionId;
-      document.getElementById('btn-to-profiles').disabled = false;
-      document.getElementById('nav-step-2').disabled = false;
-    }
-    demoStep++;
-  }, 1200 + Math.random() * 600);
+  .catch(() => { hideTyping(); appendMsg('ai', 'Não foi possível processar sua mensagem. Verifique sua conexão e tente novamente.'); });
 }
 
 function appendMsg(role, text) {
-  const el = document.createElement('div');
-  el.className = 'msg ' + role;
-
-  const av = document.createElement('div');
-  av.className = role === 'ai' ? 'msg-avatar ai' : 'msg-avatar user-av';
-  av.setAttribute('aria-hidden', 'true');
-  av.textContent = role === 'ai' ? 'AI' : 'EU';
-
-  const bubble = document.createElement('div');
-  bubble.className = 'msg-bubble';
-  const safe = escapeHTML(text)
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\n/g, '<br>');
-  bubble.innerHTML = safe;
-
-  el.appendChild(av);
-  el.appendChild(bubble);
-
-  const container = document.getElementById('chat-messages');
-  container.appendChild(el);
-  container.scrollTop = container.scrollHeight;
+  const el = document.createElement('div'); el.className = 'msg ' + role;
+  const av = document.createElement('div'); av.className = role==='ai' ? 'msg-avatar ai' : 'msg-avatar user-av'; av.textContent = role==='ai' ? 'AI' : 'EU';
+  const bubble = document.createElement('div'); bubble.className = 'msg-bubble';
+  bubble.innerHTML = escapeHTML(text).replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
+  el.appendChild(av); el.appendChild(bubble);
+  const c = document.getElementById('chat-messages'); c.appendChild(el); c.scrollTop = c.scrollHeight;
 }
 
 let typingEl = null;
 function showTyping() {
   if (typingEl) return;
-  typingEl = document.createElement('div');
-  typingEl.className = 'msg ai';
-  typingEl.setAttribute('aria-label', 'Digitando...');
-  const av = document.createElement('div');
-  av.className = 'msg-avatar ai';
-  av.setAttribute('aria-hidden', 'true');
-  av.textContent = 'AI';
-  const bubble = document.createElement('div');
-  bubble.className = 'msg-bubble';
-  bubble.innerHTML = '<div class="typing-indicator" aria-hidden="true"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';
-  typingEl.appendChild(av);
-  typingEl.appendChild(bubble);
-  const container = document.getElementById('chat-messages');
-  container.appendChild(typingEl);
-  container.scrollTop = container.scrollHeight;
+  typingEl = document.createElement('div'); typingEl.className = 'msg ai';
+  const av = document.createElement('div'); av.className = 'msg-avatar ai'; av.textContent = 'AI';
+  const bubble = document.createElement('div'); bubble.className = 'msg-bubble';
+  bubble.innerHTML = '<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';
+  typingEl.appendChild(av); typingEl.appendChild(bubble);
+  const c = document.getElementById('chat-messages'); c.appendChild(typingEl); c.scrollTop = c.scrollHeight;
 }
-function hideTyping() {
-  if (typingEl) { typingEl.remove(); typingEl = null; }
-}
+function hideTyping() { if (typingEl) { typingEl.remove(); typingEl = null; } }
 
-// ═══ PAINEL EXTRAÍDO ═══
 function updateExtractedPanel(data) {
   if (!data) return;
   const epTitle = document.getElementById('ep-title');
   const epBody = document.getElementById('ep-body');
-
-  if (data.title) {
-    epTitle.textContent = data.title;
-    epTitle.classList.remove('empty');
-    state.extractedData = { ...state.extractedData, ...data };
-    saveSession();
-  }
-
+  if (data.title) { epTitle.textContent = data.title; epTitle.classList.remove('empty'); state.extractedData = { ...state.extractedData, ...data }; saveSession(); }
   const sections = [];
   if (data.requirements?.length) sections.push({ label: 'Requisitos', items: data.requirements, cls: '' });
   if (data.hard_skills?.length) sections.push({ label: 'Hard Skills', items: data.hard_skills, cls: 'hard' });
   if (data.soft_skills?.length) sections.push({ label: 'Soft Skills', items: data.soft_skills, cls: 'soft' });
-
   if (!sections.length) return;
-
   const frag = document.createDocumentFragment();
   sections.forEach(({ label, items, cls }) => {
     const sec = document.createElement('div');
-    sec.className = 'ep-section';
-    const lbl = document.createElement('div');
-    lbl.className = 'ep-section-label';
-    lbl.textContent = label;
-    const tags = document.createElement('div');
-    tags.className = 'ep-tags';
-    items.forEach(item => {
-      const span = document.createElement('span');
-      span.className = 'ep-tag' + (cls ? ' ' + cls : '');
-      span.textContent = item;
-      tags.appendChild(span);
-    });
-    sec.appendChild(lbl);
-    sec.appendChild(tags);
-    frag.appendChild(sec);
+    const lbl = document.createElement('div'); lbl.className = 'ep-section-label'; lbl.textContent = label;
+    const tags = document.createElement('div'); tags.className = 'ep-tags';
+    items.forEach(item => { const span = document.createElement('span'); span.className = 'ep-tag' + (cls ? ' '+cls : ''); span.textContent = item; tags.appendChild(span); });
+    sec.appendChild(lbl); sec.appendChild(tags); frag.appendChild(sec);
   });
-  epBody.innerHTML = '';
-  epBody.appendChild(frag);
+  epBody.innerHTML = ''; epBody.appendChild(frag);
 }
 
-// ═══ TABS (View 2) ═══
 function switchTab(name) {
-  const names = ['url', 'file', 'text'];
-  document.querySelectorAll('.tab-btn').forEach((b, i) => {
-    const active = names[i] === name;
-    b.classList.toggle('active', active);
-    b.setAttribute('aria-selected', active ? 'true' : 'false');
-  });
+  const names = ['url','file','text'];
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', names[i]===name));
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-  document.getElementById('tab-' + name).classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
 }
 
-// ═══ FILA DE PERFIS ═══
 function addToQueue(profile) {
-  if (state.profiles.length >= 50) {
-    alert('Máximo de 50 perfis por análise.');
-    return;
-  }
-  state.profiles.push(profile);
-  renderQueue();
+  if (state.profiles.length >= 50) { alert('Máximo de 50 perfis.'); return; }
+  state.profiles.push(profile); renderQueue();
 }
-
-function removeFromQueue(id) {
-  state.profiles = state.profiles.filter(p => p.id !== id);
-  renderQueue();
-}
-
+function removeFromQueue(id) { state.profiles = state.profiles.filter(p => p.id !== id); renderQueue(); }
 function renderQueue() {
   const el = document.getElementById('profile-queue');
   const label = document.getElementById('queue-label');
   const btn = document.getElementById('btn-analyze');
-  const count = document.getElementById('queue-count');
-
-  if (!state.profiles.length) {
-    el.innerHTML = '';
-    label.style.display = 'none';
-    btn.disabled = true;
-    return;
-  }
-
-  label.style.display = 'block';
-  count.textContent = state.profiles.length;
-  btn.disabled = false;
-
+  if (!state.profiles.length) { el.innerHTML=''; label.style.display='none'; btn.disabled=true; return; }
+  label.style.display='block'; document.getElementById('queue-count').textContent=state.profiles.length; btn.disabled=false;
   const frag = document.createDocumentFragment();
   state.profiles.forEach(p => {
-    const item = document.createElement('div');
-    item.className = 'queue-item';
-    item.setAttribute('role', 'listitem');
-
-    const icon = document.createElement('span');
-    icon.className = 'queue-item-icon';
-    icon.setAttribute('aria-hidden', 'true');
-    icon.textContent = p.icon;
-
-    const name = document.createElement('span');
-    name.className = 'queue-item-name';
-    name.textContent = p.name;
-
-    const type = document.createElement('span');
-    type.className = 'queue-item-type';
-    type.textContent = p.type;
-
-    const removeBtn = document.createElement('button');
-    removeBtn.className = 'btn-remove-q';
-    removeBtn.setAttribute('data-id', p.id);
-    removeBtn.setAttribute('aria-label', 'Remover ' + p.name);
-    removeBtn.textContent = '✕';
-
-    item.appendChild(icon);
-    item.appendChild(name);
-    item.appendChild(type);
-    item.appendChild(removeBtn);
-    frag.appendChild(item);
+    const item = document.createElement('div'); item.className='queue-item';
+    const icon = document.createElement('span'); icon.className='queue-item-icon'; icon.textContent=p.icon;
+    const name = document.createElement('span'); name.className='queue-item-name'; name.textContent=p.name;
+    const type = document.createElement('span'); type.className='queue-item-type'; type.textContent=p.type;
+    const rb = document.createElement('button'); rb.className='btn-remove-q'; rb.setAttribute('data-id',p.id); rb.textContent='✕';
+    item.appendChild(icon); item.appendChild(name); item.appendChild(type); item.appendChild(rb); frag.appendChild(item);
   });
-
-  el.innerHTML = '';
-  el.appendChild(frag);
+  el.innerHTML=''; el.appendChild(frag);
 }
-
-document.getElementById('profile-queue').addEventListener('click', e => {
-  const btn = e.target.closest('.btn-remove-q');
-  if (btn) removeFromQueue(btn.dataset.id);
-});
+document.getElementById('profile-queue').addEventListener('click', e => { const b = e.target.closest('.btn-remove-q'); if (b) removeFromQueue(b.dataset.id); });
 
 function addFromUrl() {
-  const input = document.getElementById('url-input');
-  const val = input.value.trim();
-  if (!val) return;
-  const url = safeUrl(val);
-  if (!url) { alert('URL inválida. Use um link https:// válido.'); return; }
-  const name = val.replace(/.*linkedin\.com\/in\//i, '').replace(/\/.*/,'') || val;
-  addToQueue({ id: crypto.randomUUID(), name: name || val, type: 'url', content: url, icon: '🔗' });
-  input.value = '';
+  const input = document.getElementById('url-input'); const val = input.value.trim(); if (!val) return;
+  const url = safeUrl(val); if (!url) { alert('URL inválida.'); return; }
+  const name = val.replace(/.*linkedin\.com\/in\//i,'').replace(/\/.*/,'') || val;
+  addToQueue({ id: crypto.randomUUID(), name, type: 'url', content: url, icon: '🔗' }); input.value='';
 }
-
 function addFromText() {
   const text = document.getElementById('text-input').value.trim();
   const nameRaw = document.getElementById('text-name-input').value.trim();
   if (!text) { alert('Cole o conteúdo do candidato antes de adicionar.'); return; }
-  const name = nameRaw || 'Candidato sem nome';
-  addToQueue({ id: crypto.randomUUID(), name, type: 'text', content: text, icon: '📝' });
-  document.getElementById('text-input').value = '';
-  document.getElementById('text-name-input').value = '';
+  addToQueue({ id: crypto.randomUUID(), name: nameRaw||'Candidato sem nome', type: 'text', content: text, icon: '📝' });
+  document.getElementById('text-input').value=''; document.getElementById('text-name-input').value='';
 }
-
 async function handleFiles(files) {
   for (const file of files) {
-    const ext = file.name.split('.').pop().toLowerCase();
-    let text = '';
-    let error = false;
-    try {
-      if (ext === 'pdf') {
-        text = await extractPdf(file);
-      } else if (ext === 'docx' || ext === 'doc') {
-        text = await extractDocx(file);
-      } else {
-        text = await file.text();
-      }
-    } catch (e) {
-      console.error('Erro ao ler arquivo:', file.name, e);
-      error = true;
-    }
-    if (error || !text.trim()) {
-      alert('Não foi possível ler "' + file.name + '". Verifique se o arquivo não está corrompido.');
-      continue;
-    }
-    addToQueue({
-      id: crypto.randomUUID(),
-      name: file.name.replace(/\.(pdf|docx?|txt)$/i, ''),
-      type: ext.toUpperCase(),
-      content: text,
-      icon: ext === 'pdf' ? '📄' : '📝',
-    });
+    const ext = file.name.split('.').pop().toLowerCase(); let text='', error=false;
+    try { if (ext==='pdf') text=await extractPdf(file); else if (ext==='docx'||ext==='doc') text=await extractDocx(file); else text=await file.text(); } catch(e) { error=true; }
+    if (error||!text.trim()) { alert('Não foi possível ler "'+file.name+'".'); continue; }
+    addToQueue({ id: crypto.randomUUID(), name: file.name.replace(/\.(pdf|docx?|txt)$/i,''), type: ext.toUpperCase(), content: text, icon: ext==='pdf'?'📄':'📝' });
   }
 }
-
 async function extractPdf(file) {
-  const lib = window.pdfjsLib;
-  if (!lib) throw new Error('pdf.js ainda não carregado');
-  lib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-  const ab = await file.arrayBuffer();
-  const doc = await lib.getDocument({ data: ab }).promise;
-  let text = '';
-  for (let i = 1; i <= doc.numPages; i++) {
-    const page = await doc.getPage(i);
-    const content = await page.getTextContent();
-    text += content.items.map(s => s.str).join(' ') + '\n';
-  }
+  const lib = window.pdfjsLib; if (!lib) throw new Error('pdf.js não carregado');
+  lib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const ab = await file.arrayBuffer(); const doc = await lib.getDocument({ data: ab }).promise; let text='';
+  for (let i=1;i<=doc.numPages;i++) { const page=await doc.getPage(i); const c=await page.getTextContent(); text+=c.items.map(s=>s.str).join(' ')+'\n'; }
   return text;
 }
-
 async function extractDocx(file) {
-  if (!window.mammoth) throw new Error('mammoth.js ainda não carregado');
-  const ab = await file.arrayBuffer();
-  const result = await mammoth.extractRawText({ arrayBuffer: ab });
-  return result.value;
+  if (!window.mammoth) throw new Error('mammoth.js não carregado');
+  const ab = await file.arrayBuffer(); const result = await mammoth.extractRawText({ arrayBuffer: ab }); return result.value;
 }
 
-// ═══ ANALISAR ═══
 let _analyzingInProgress = false;
-
 async function analyzeProfiles() {
-  if (!state.profiles.length) return;
-  if (_analyzingInProgress) return;
+  if (!state.profiles.length || _analyzingInProgress) return;
   _analyzingInProgress = true;
-
   document.getElementById('ranking-empty').classList.add('hidden');
   document.getElementById('candidates-grid').classList.add('hidden');
   document.getElementById('loading-state').classList.remove('hidden');
   document.getElementById('btn-analyze').disabled = true;
-
-  const msgs = [
-    'Analisando candidatos com IA...',
-    'Realizando RAG com a descrição da vaga...',
-    'Calculando scores de aderência...',
-    'Montando análises completas...',
-  ];
-  let mi = 0;
-  const loadTicker = setInterval(() => {
-    mi = (mi + 1) % msgs.length;
-    const el = document.getElementById('loading-msg');
-    if (el) el.textContent = msgs[mi];
-  }, 2000);
-
+  const msgs = ['Analisando candidatos com IA...','Realizando RAG com a descrição da vaga...','Calculando scores de aderência...','Montando análises completas...'];
+  let mi=0;
+  const ticker = setInterval(() => { mi=(mi+1)%msgs.length; const el=document.getElementById('loading-msg'); if(el) el.textContent=msgs[mi]; }, 2000);
   try {
-    let candidates;
-    if (CONFIG.DEMO_MODE) {
-      await new Promise(r => setTimeout(r, 3000));
-      candidates = generateDemoCandidates();
-    } else {
-      const res = await fetch(CONFIG.ANALYZE_WEBHOOK, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          job_id: state.jobId,
-          session_id: state.sessionId,
-          profiles: state.profiles.map(p => ({ id: p.id, name: p.name, type: p.type, content: p.content })),
-        }),
-      });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const data = await res.json();
-      if (!data || !Array.isArray(data.candidates)) throw new Error('Resposta sem candidatos');
-      candidates = data.candidates;
-    }
-
-    clearInterval(loadTicker);
-    _analyzingInProgress = false;
-    state.candidates = candidates.sort((a, b) => b.score - a.score);
+    const res = await fetch(CONFIG.ANALYZE_WEBHOOK, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ job_id: state.jobId, session_id: state.sessionId, client_id: currentUser?.id||null, profiles: state.profiles.map(p=>({id:p.id,name:p.name,type:p.type,content:p.content})) }),
+    });
+    if (!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+    if (!data||!Array.isArray(data.candidates)) throw new Error('Sem candidatos');
+    clearInterval(ticker); _analyzingInProgress=false;
+    state.candidates = data.candidates.sort((a,b) => b.score-a.score);
     document.getElementById('loading-state').classList.add('hidden');
-    renderRanking();
-    document.getElementById('nav-step-3').disabled = false;
-  } catch (e) {
-    clearInterval(loadTicker);
-    _analyzingInProgress = false;
+    renderRanking(); document.getElementById('nav-step-3').disabled=false;
+  } catch(e) {
+    clearInterval(ticker); _analyzingInProgress=false;
     document.getElementById('loading-state').classList.add('hidden');
-    document.getElementById('btn-analyze').disabled = false;
+    document.getElementById('btn-analyze').disabled=false;
     document.getElementById('ranking-empty').classList.remove('hidden');
-    const msgEl = document.querySelector('#ranking-empty p');
-    if (msgEl) msgEl.textContent = 'Ocorreu um erro na análise. Verifique sua conexão e tente novamente.';
+    const msgEl = document.querySelector('#ranking-empty p'); if (msgEl) msgEl.textContent='Ocorreu um erro na análise. Verifique sua conexão e tente novamente.';
   }
 }
 
-function generateDemoCandidates() {
-  const pool = state.profiles;
-  const demoData = [
-    { score: 91, recommendation: 'shortlist', summary: 'Profissional com 6 anos de experiência em análise de dados em ambiente fintech. Domínio sólido de Python e SQL com experiência em pipelines de dados em produção. Comunicação técnica diferenciada — apresentou resultados de ML para board.', match_reasons: ['6 anos de experiência relevante superando o mínimo de 3', 'Inglês fluente comprovado em empresa americana', 'Experiência direta com dbt e Looker'], gaps: ['Sem experiência documentada com GCP (apenas AWS)', 'Gestão de equipe não mencionada'], hard_skills: ['Python','SQL','dbt','Looker','AWS','Scikit-learn'], soft_skills: ['Comunicação técnica','Liderança','Autonomia'], highlights: ['Construiu pipeline que reduziu tempo de análise em 70%', 'Palestrante em DataCamp Conference 2024'], concerns: ['LinkedIn não atualizado nos últimos 6 meses'], outreach_angle: 'Seu trabalho com pipelines de ML em ambiente fintech é exatamente o que precisamos — temos um desafio parecido mas em escala 3x maior.' },
-    { score: 78, recommendation: 'shortlist', summary: 'Analista pleno com transição bem executada de BI tradicional para engenharia de dados. Perfil mais técnico do que indica o cargo atual.', match_reasons: ['Stack técnica alinhada com 85% dos requisitos', 'Certificação AWS Solutions Architect', 'Projetos pessoais no GitHub'], gaps: ['Experiência total de 3 anos (limite mínimo)', 'Sem experiência em ambiente de produto (só consultoria)'], hard_skills: ['Python','SQL','Spark','AWS','Power BI'], soft_skills: ['Aprendizado acelerado','Proatividade'], highlights: ['GitHub com 15 projetos ativos', 'Certificação AWS em 2024'], concerns: ['Nunca trabalhou em squad de produto'], outreach_angle: 'Vi seus projetos no GitHub — você claramente está além do seu cargo atual.' },
-    { score: 62, recommendation: 'maybe', summary: 'Perfil sólido em Business Intelligence com tendência à análise exploratória. Forte nas soft skills, especialmente gestão de stakeholders.', match_reasons: ['8 anos de experiência analítica', 'Comunicação executiva comprovada', 'Experiência com produto SaaS'], gaps: ['Python mencionado mas sem evidência de uso avançado', 'Sem experiência com cloud'], hard_skills: ['SQL','Power BI','Excel avançado','Tableau'], soft_skills: ['Gestão de stakeholders','Apresentação executiva','Liderança de projetos'], highlights: ['Liderou implantação de data warehouse em 2023'], concerns: ['Stack defasada em relação ao que a vaga exige', 'Sem evidência de trabalho com ML'], outreach_angle: 'Seu histórico em SaaS é relevante — quero entender se você tem interesse em expandir para uma stack mais moderna.' },
-  ];
-  return pool.slice(0, 3).map((p, i) => ({
-    id: p.id,
-    name: p.name,
-    current_role: ['Senior Data Analyst', 'Data Engineer Pleno', 'BI Manager'][i] || 'Analista',
-    location: ['São Paulo, SP', 'Campinas, SP', 'Remoto — RJ'][i] || '',
-    education: ['Eng. de Computação — USP', 'Ciência de Dados — Unicamp', 'Administração — FGV'][i] || '',
-    linkedin_url: p.type === 'url' ? p.content : '',
-    ...(demoData[i] || demoData[0]),
-  }));
-}
-
-// ═══ RENDER RANKING ═══
 function renderRanking() {
   const grid = document.getElementById('candidates-grid');
-  const count = document.getElementById('ranking-count');
-  const circ = 2 * Math.PI * 26;
-
-  count.textContent = state.candidates.length + ' candidato' + (state.candidates.length !== 1 ? 's' : '');
+  const circ = 2*Math.PI*26;
+  document.getElementById('ranking-count').textContent = state.candidates.length+' candidato'+(state.candidates.length!==1?'s':'');
   grid.classList.remove('hidden');
-
   const frag = document.createDocumentFragment();
-  state.candidates.forEach((c, i) => {
-    const card = document.createElement('div');
-    card.className = 'candidate-card';
-    card.setAttribute('role', 'listitem');
-    card.setAttribute('tabindex', '0');
-    card.setAttribute('aria-label', c.name + ', score ' + c.score);
-    card.style.animationDelay = (i * 80) + 'ms';
-
-    const inSL = state.shortlist.includes(c.id);
-    const color = scoreColor(c.score);
-    const offset = circ - (c.score / 100 * circ);
-
-    const rank = document.createElement('span');
-    rank.className = 'rank-num';
-    rank.setAttribute('aria-hidden', 'true');
-    rank.textContent = '#' + (i + 1);
-
-    const ring = document.createElement('div');
-    ring.className = 'score-ring';
-    ring.setAttribute('aria-hidden', 'true');
-    ring.style.position = 'relative';
-    ring.innerHTML = `
-      <svg viewBox="0 0 64 64" style="transform:rotate(-90deg)">
-        <circle class="bg" cx="32" cy="32" r="26"/>
-        <circle class="fg" cx="32" cy="32" r="26" stroke="${escapeHTML(color)}" stroke-dasharray="${circ.toFixed(2)}" stroke-dashoffset="${offset.toFixed(2)}" stroke-linecap="round" fill="none" stroke-width="5"/>
-      </svg>
-      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
-        <span style="font-family:'Fira Code',monospace;font-size:0.75rem;font-weight:600;color:${escapeHTML(color)}">${c.score}</span>
-      </div>`;
-
-    const info = document.createElement('div');
-    info.className = 'card-info';
-
-    const nameEl = document.createElement('div');
-    nameEl.className = 'card-name';
-    nameEl.textContent = c.name;
-
-    const roleEl = document.createElement('div');
-    roleEl.className = 'card-role';
-    roleEl.textContent = (c.current_role || '') + (c.location ? ' · ' + c.location : '');
-
-    const meta = document.createElement('div');
-    meta.className = 'card-meta';
-    (c.hard_skills || []).slice(0, 3).forEach(s => {
-      const tag = document.createElement('span');
-      tag.className = 'card-tag';
-      tag.style.cssText = 'border-color:var(--accent-glow);color:var(--accent)';
-      tag.textContent = s;
-      meta.appendChild(tag);
-    });
-
-    info.appendChild(nameEl);
-    info.appendChild(roleEl);
-    info.appendChild(meta);
-
-    const actions = document.createElement('div');
-    actions.className = 'card-actions';
-
-    const badge = document.createElement('span');
-    badge.className = 'badge-rec badge-' + (c.recommendation || 'maybe');
-    badge.textContent = c.recommendation || '';
-
-    const slBtn = document.createElement('button');
-    slBtn.className = 'btn-shortlist-card' + (inSL ? ' in-shortlist' : '');
-    slBtn.setAttribute('data-id', c.id);
-    slBtn.setAttribute('aria-label', (inSL ? 'Remover da' : 'Adicionar à') + ' shortlist: ' + c.name);
-    slBtn.setAttribute('aria-pressed', inSL ? 'true' : 'false');
-    slBtn.textContent = inSL ? '⭐' : '☆';
-
-    actions.appendChild(badge);
-    actions.appendChild(slBtn);
-
-    card.appendChild(rank);
-    card.appendChild(ring);
-    card.appendChild(info);
-    card.appendChild(actions);
-
-    card.addEventListener('click', e => {
-      if (!e.target.closest('.btn-shortlist-card')) openModal(c.id);
-    });
-    card.addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(c.id); }
-    });
-
+  state.candidates.forEach((c,i) => {
+    const card = document.createElement('div'); card.className='candidate-card'; card.setAttribute('tabindex','0'); card.style.animationDelay=(i*80)+'ms';
+    const inSL = state.shortlist.includes(c.id); const color = scoreColor(c.score); const offset = circ-(c.score/100*circ);
+    const rank = document.createElement('span'); rank.className='rank-num'; rank.textContent='#'+(i+1);
+    const ring = document.createElement('div'); ring.className='score-ring'; ring.style.position='relative';
+    ring.innerHTML=`<svg viewBox="0 0 64 64" style="transform:rotate(-90deg)"><circle class="bg" cx="32" cy="32" r="26"/><circle class="fg" cx="32" cy="32" r="26" stroke="${escapeHTML(color)}" stroke-dasharray="${circ.toFixed(2)}" stroke-dashoffset="${offset.toFixed(2)}" stroke-linecap="round" fill="none" stroke-width="5"/></svg><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center"><span style="font-family:'Fira Code',monospace;font-size:0.75rem;font-weight:600;color:${escapeHTML(color)}">${c.score}</span></div>`;
+    const info = document.createElement('div'); info.className='card-info';
+    const nameEl = document.createElement('div'); nameEl.className='card-name'; nameEl.textContent=c.name;
+    const roleEl = document.createElement('div'); roleEl.className='card-role'; roleEl.textContent=(c.current_role||'')+(c.location?' · '+c.location:'');
+    const meta = document.createElement('div'); meta.className='card-meta';
+    (c.hard_skills||[]).slice(0,3).forEach(s => { const tag=document.createElement('span'); tag.className='card-tag'; tag.style.cssText='border-color:var(--accent-glow);color:var(--accent)'; tag.textContent=s; meta.appendChild(tag); });
+    info.appendChild(nameEl); info.appendChild(roleEl); info.appendChild(meta);
+    const actions = document.createElement('div'); actions.className='card-actions';
+    const badge = document.createElement('span'); badge.className='badge-rec badge-'+(c.recommendation||'maybe'); badge.textContent=c.recommendation||'';
+    const slBtn = document.createElement('button'); slBtn.className='btn-shortlist-card'+(inSL?' in-shortlist':''); slBtn.setAttribute('data-id',c.id); slBtn.textContent=inSL?'⭐':'☆';
+    actions.appendChild(badge); actions.appendChild(slBtn);
+    card.appendChild(rank); card.appendChild(ring); card.appendChild(info); card.appendChild(actions);
+    card.addEventListener('click', e => { if(!e.target.closest('.btn-shortlist-card')) openModal(c.id); });
+    card.addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' ') { e.preventDefault(); openModal(c.id); } });
     frag.appendChild(card);
   });
-
-  grid.innerHTML = '';
-  grid.appendChild(frag);
+  grid.innerHTML=''; grid.appendChild(frag);
 }
+document.getElementById('candidates-grid').addEventListener('click', e => { const b=e.target.closest('.btn-shortlist-card'); if(b) { e.stopPropagation(); toggleShortlist(b.dataset.id); } });
 
-document.getElementById('candidates-grid').addEventListener('click', e => {
-  const btn = e.target.closest('.btn-shortlist-card');
-  if (btn) { e.stopPropagation(); toggleShortlist(btn.dataset.id); }
-});
-
-// ═══ SHORTLIST ═══
 function toggleShortlist(id) {
   const isAdding = !state.shortlist.includes(id);
+  if (isAdding) state.shortlist.push(id); else state.shortlist=state.shortlist.filter(s=>s!==id);
+  renderRanking(); if (state.currentModal===id) updateModalShortlistBtn(id);
   if (isAdding) {
-    state.shortlist.push(id);
-  } else {
-    state.shortlist = state.shortlist.filter(s => s !== id);
-  }
-  renderRanking();
-  if (state.currentModal === id) updateModalShortlistBtn(id);
-
-  if (isAdding && !CONFIG.DEMO_MODE) {
-    const c = state.candidates.find(x => x.id === id);
-    if (c) {
-      fetch(CONFIG.SHORTLIST_WEBHOOK, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          session_id: state.sessionId,
-          job_id: state.jobId,
-          candidate_id: c.id,
-          candidate_name: c.name,
-          score: c.score,
-          current_role: c.current_role || '',
-          summary: c.summary || '',
-          highlights: c.highlights || c.match_reasons || [],
-          concerns: c.concerns || c.gaps || [],
-          hard_skills: c.hard_skills || [],
-          soft_skills: c.soft_skills || [],
-          outreach_angle: c.outreach_angle || '',
-          starred: state.stars[id] || 0
-        })
-      }).catch(err => console.warn('Shortlist webhook error:', err));
-    }
+    const c = state.candidates.find(x=>x.id===id);
+    if (c) fetch(CONFIG.SHORTLIST_WEBHOOK, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ session_id:state.sessionId, job_id:state.jobId, client_id:currentUser?.id||null, candidate_id:c.id, candidate_name:c.name, score:c.score, current_role:c.current_role||'', summary:c.summary||'', highlights:c.highlights||c.match_reasons||[], concerns:c.concerns||c.gaps||[], hard_skills:c.hard_skills||[], soft_skills:c.soft_skills||[], outreach_angle:c.outreach_angle||'', starred:state.stars[id]||0 }) }).catch(err=>console.warn('Shortlist error:',err));
   }
 }
-
-function toggleShortlistFromModal() {
-  if (state.currentModal) toggleShortlist(state.currentModal);
-}
-
+function toggleShortlistFromModal() { if (state.currentModal) toggleShortlist(state.currentModal); }
 function updateModalShortlistBtn(id) {
-  const btn = document.getElementById('btn-modal-shortlist');
-  const inSL = state.shortlist.includes(id);
-  btn.textContent = inSL ? '⭐ Na Shortlist' : '☆ Adicionar à Shortlist';
-  btn.classList.toggle('in-sl', inSL);
+  const btn = document.getElementById('btn-modal-shortlist'); const inSL = state.shortlist.includes(id);
+  btn.textContent = inSL?'⭐ Na Shortlist':'☆ Adicionar à Shortlist'; btn.classList.toggle('in-sl',inSL);
 }
 
-// ═══ MODAL ═══
 function openModal(id) {
-  const c = state.candidates.find(x => x.id === id);
-  if (!c) return;
+  const c = state.candidates.find(x=>x.id===id); if (!c) return;
   state.currentModal = id;
-
-  const color = scoreColor(c.score);
-  const circ = 2 * Math.PI * 26;
-
-  document.getElementById('modal-name').textContent = c.name || '—';
-  document.getElementById('modal-role').textContent =
-    (c.current_role || '') + (c.location ? ' — ' + c.location : '') || '—';
-  document.getElementById('modal-score-val').textContent = c.score;
-  document.getElementById('modal-score-val').style.color = color;
-
-  const circle = document.getElementById('modal-score-circle');
-  circle.setAttribute('stroke', color);
-  circle.style.strokeDashoffset = (circ - (c.score / 100 * circ)).toFixed(2);
-
-  const metaEl = document.getElementById('modal-meta');
-  metaEl.innerHTML = '';
-  const chips = [];
-  if (c.location) chips.push(['📍', c.location]);
-  if (c.education) chips.push(['🎓', c.education]);
-  chips.forEach(([icon, text]) => {
-    const chip = document.createElement('span');
-    chip.className = 'meta-chip';
-    const ic = document.createElement('span');
-    ic.className = 'icon';
-    ic.setAttribute('aria-hidden', 'true');
-    ic.textContent = icon;
-    chip.appendChild(ic);
-    chip.appendChild(document.createTextNode(text));
-    metaEl.appendChild(chip);
-  });
-  const recChip = document.createElement('span');
-  recChip.className = 'meta-chip badge-' + (c.recommendation || 'maybe');
-  recChip.style.cssText = 'border:none;padding:3px 10px';
-  recChip.textContent = c.recommendation || '';
-  metaEl.appendChild(recChip);
-
-  const liBtn = document.getElementById('modal-linkedin-btn');
-  const safeLink = c.linkedin_url ? safeUrl(c.linkedin_url) : null;
-  if (safeLink) {
-    liBtn.href = safeLink;
-    liBtn.style.display = 'inline-flex';
-  } else {
-    liBtn.style.display = 'none';
-  }
-
-  const body = document.getElementById('modal-body');
-  body.innerHTML = '';
-
-  const summarySection = buildSection('Resumo Profissional');
-  const summaryBox = document.createElement('div');
-  summaryBox.className = 'modal-summary';
-  summaryBox.textContent = c.summary || c.executive_summary || '—';
-  summarySection.appendChild(summaryBox);
-  body.appendChild(summarySection);
-
-  const twoCol = document.createElement('div');
-  twoCol.className = 'two-col';
-
-  const strongSec = buildSection('✅ Pontos Fortes');
-  const strongList = buildPointList(c.highlights || c.match_reasons || [], '✦', null);
-  strongSec.appendChild(strongList);
-  twoCol.appendChild(strongSec);
-
-  const gapSec = buildSection('⚠️ Pontos de Atenção');
-  const gapList = buildPointList(c.concerns || c.gaps || [], '◆', 'var(--amber)');
-  gapSec.appendChild(gapList);
-  twoCol.appendChild(gapSec);
+  const color = scoreColor(c.score); const circ = 2*Math.PI*26;
+  document.getElementById('modal-name').textContent=c.name||'—';
+  document.getElementById('modal-role').textContent=(c.current_role||'')+(c.location?' — '+c.location:'')||'—';
+  document.getElementById('modal-score-val').textContent=c.score; document.getElementById('modal-score-val').style.color=color;
+  const circle = document.getElementById('modal-score-circle'); circle.setAttribute('stroke',color); circle.style.strokeDashoffset=(circ-(c.score/100*circ)).toFixed(2);
+  const metaEl = document.getElementById('modal-meta'); metaEl.innerHTML='';
+  const chips=[]; if(c.location) chips.push(['📍',c.location]); if(c.education) chips.push(['🎓',c.education]);
+  chips.forEach(([icon,text]) => { const chip=document.createElement('span'); chip.className='meta-chip'; chip.innerHTML=`<span>${icon}</span>`; chip.appendChild(document.createTextNode(text)); metaEl.appendChild(chip); });
+  const recChip=document.createElement('span'); recChip.className='meta-chip badge-'+(c.recommendation||'maybe'); recChip.style.cssText='border:none;padding:3px 10px'; recChip.textContent=c.recommendation||''; metaEl.appendChild(recChip);
+  const liBtn=document.getElementById('modal-linkedin-btn'); const safeLink=c.linkedin_url?safeUrl(c.linkedin_url):null;
+  if(safeLink){liBtn.href=safeLink;liBtn.style.display='inline-flex';}else{liBtn.style.display='none';}
+  const body=document.getElementById('modal-body'); body.innerHTML='';
+  const sumSec=buildSection('Resumo Profissional'); const sumBox=document.createElement('div'); sumBox.className='modal-summary'; sumBox.textContent=c.summary||c.executive_summary||'—'; sumSec.appendChild(sumBox); body.appendChild(sumSec);
+  const twoCol=document.createElement('div'); twoCol.className='two-col';
+  const strongSec=buildSection('✅ Pontos Fortes'); strongSec.appendChild(buildPointList(c.highlights||c.match_reasons||[],'✦',null)); twoCol.appendChild(strongSec);
+  const gapSec=buildSection('⚠️ Pontos de Atenção'); gapSec.appendChild(buildPointList(c.concerns||c.gaps||[],'◆','var(--amber)')); twoCol.appendChild(gapSec);
   body.appendChild(twoCol);
-
-  // Conclusão (campo C-Level)
-  if (c.conclusion) {
-    const conclSec = buildSection('📋 Conclusão');
-    const conclBox = document.createElement('div');
-    conclBox.className = 'modal-summary';
-    conclBox.textContent = c.conclusion;
-    conclSec.appendChild(conclBox);
-    body.appendChild(conclSec);
-  }
-
-  const skillsSec = buildSection('Competências');
-  const clusters = document.createElement('div');
-  clusters.className = 'skill-clusters';
-  clusters.appendChild(buildSkillCluster('Hard Skills', c.hard_skills || [], 'has'));
-  clusters.appendChild(buildSkillCluster('Soft Skills', c.soft_skills || [], 'soft'));
-  skillsSec.appendChild(clusters);
-  body.appendChild(skillsSec);
-
-  if (c.outreach_angle) {
-    const outSec = buildSection('💬 Ângulo de Abordagem (IA)');
-    const box = document.createElement('div');
-    box.className = 'outreach-box';
-    box.textContent = '"' + c.outreach_angle + '"';
-    outSec.appendChild(box);
-    body.appendChild(outSec);
-  }
-
-  updateModalShortlistBtn(id);
-  const overlay = document.getElementById('modal-overlay');
-  overlay.classList.add('open');
-  setTimeout(() => document.getElementById('modal-name').focus?.(), 50);
+  if(c.conclusion){const cs=buildSection('📋 Conclusão');const cb=document.createElement('div');cb.className='modal-summary';cb.textContent=c.conclusion;cs.appendChild(cb);body.appendChild(cs);}
+  const skillsSec=buildSection('Competências'); const clusters=document.createElement('div'); clusters.className='skill-clusters';
+  clusters.appendChild(buildSkillCluster('Hard Skills',c.hard_skills||[],'has')); clusters.appendChild(buildSkillCluster('Soft Skills',c.soft_skills||[],'soft'));
+  skillsSec.appendChild(clusters); body.appendChild(skillsSec);
+  if(c.outreach_angle){const os=buildSection('💬 Ângulo de Abordagem');const ob=document.createElement('div');ob.className='outreach-box';ob.textContent='"'+c.outreach_angle+'"';os.appendChild(ob);body.appendChild(os);}
+  updateModalShortlistBtn(id); document.getElementById('modal-overlay').classList.add('open');
 }
+function buildSection(title){const div=document.createElement('div');const t=document.createElement('div');t.className='modal-section-title';t.textContent=title;div.appendChild(t);return div;}
+function buildPointList(items,icon,iconColor){const list=document.createElement('div');list.className='point-list';items.forEach(text=>{const item=document.createElement('div');item.className='point-item';const ic=document.createElement('span');ic.className='point-icon';if(iconColor)ic.style.color=iconColor;ic.textContent=icon;const txt=document.createElement('span');txt.textContent=text;item.appendChild(ic);item.appendChild(txt);list.appendChild(item);});return list;}
+function buildSkillCluster(title,skills,cls){const cluster=document.createElement('div');cluster.className='skill-cluster';const h=document.createElement('h4');h.textContent=title;const tags=document.createElement('div');tags.className='skill-tags';skills.forEach(s=>{const tag=document.createElement('span');tag.className='skill-tag '+cls;tag.textContent=s;tags.appendChild(tag);});cluster.appendChild(h);cluster.appendChild(tags);return cluster;}
+function closeModal(){document.getElementById('modal-overlay').classList.remove('open');state.currentModal=null;}
 
-function buildSection(title) {
-  const div = document.createElement('div');
-  const t = document.createElement('div');
-  t.className = 'modal-section-title';
-  t.textContent = title;
-  div.appendChild(t);
-  return div;
-}
-
-function buildPointList(items, icon, iconColor) {
-  const list = document.createElement('div');
-  list.className = 'point-list';
-  items.forEach(text => {
-    const item = document.createElement('div');
-    item.className = 'point-item';
-    const ic = document.createElement('span');
-    ic.className = 'point-icon';
-    ic.setAttribute('aria-hidden', 'true');
-    if (iconColor) ic.style.color = iconColor;
-    ic.textContent = icon;
-    const txt = document.createElement('span');
-    txt.textContent = text;
-    item.appendChild(ic);
-    item.appendChild(txt);
-    list.appendChild(item);
+function renderShortlist(){
+  const empty=document.getElementById('shortlist-empty'); const table=document.getElementById('comparison-table'); const tbody=document.getElementById('comp-tbody');
+  const candidates=state.candidates.filter(c=>state.shortlist.includes(c.id)).sort((a,b)=>(state.stars[b.id]||0)-(state.stars[a.id]||0)||b.score-a.score);
+  document.getElementById('sl-count').textContent=candidates.length+' candidato'+(candidates.length!==1?'s':'')+' na shortlist';
+  if(!candidates.length){empty.classList.remove('hidden');table.classList.add('hidden');return;}
+  empty.classList.add('hidden');table.classList.remove('hidden');
+  const frag=document.createDocumentFragment();
+  candidates.forEach(c=>{
+    const stars=state.stars[c.id]||0; const tr=document.createElement('tr');
+    const tdN=document.createElement('td'); const nd=document.createElement('div');nd.className='comp-name';nd.textContent=c.name; const rd=document.createElement('div');rd.className='comp-role';rd.textContent=c.current_role||''; tdN.appendChild(nd);tdN.appendChild(rd);
+    const tdS=document.createElement('td'); const ss=document.createElement('span');ss.className='comp-score '+scoreClass(c.score);ss.textContent=c.score; tdS.appendChild(ss);
+    const tdH=buildCompPoints(c.highlights||c.match_reasons||[],'✦',null);
+    const tdG=buildCompPoints(c.concerns||c.gaps||[],'◆','var(--amber)');
+    const tdSt=document.createElement('td'); const sr=document.createElement('div');sr.className='star-row';
+    [1,2,3].forEach(n=>{const b=document.createElement('button');b.className='star'+(stars>=n?' lit':'');b.textContent='★';b.setAttribute('data-id',c.id);b.setAttribute('data-n',n);sr.appendChild(b);}); tdSt.appendChild(sr);
+    const tdR=document.createElement('td'); const rb=document.createElement('button');rb.className='btn-remove-sl';rb.setAttribute('data-id',c.id);rb.textContent='Remover'; tdR.appendChild(rb);
+    tr.appendChild(tdN);tr.appendChild(tdS);tr.appendChild(tdH);tr.appendChild(tdG);tr.appendChild(tdSt);tr.appendChild(tdR); frag.appendChild(tr);
   });
-  return list;
+  tbody.innerHTML=''; tbody.appendChild(frag);
+}
+function buildCompPoints(items,icon,iconColor){const td=document.createElement('td');const div=document.createElement('div');div.className='comp-points';items.slice(0,2).forEach(text=>{const pt=document.createElement('div');pt.className='pt';const ic=document.createElement('span');if(iconColor)ic.style.color=iconColor;ic.textContent=icon;pt.appendChild(ic);pt.appendChild(document.createTextNode(text));div.appendChild(pt);});td.appendChild(div);return td;}
+document.getElementById('comp-tbody').addEventListener('click',e=>{const sb=e.target.closest('.star');if(sb){setStar(sb.dataset.id,Number(sb.dataset.n));return;}const rb=e.target.closest('.btn-remove-sl');if(rb){toggleShortlist(rb.dataset.id);renderShortlist();}});
+function setStar(id,n){state.stars[id]=state.stars[id]===n?0:n;renderShortlist();}
+
+function startNovaVaga(){
+  clearSession(); state.sessionId=crypto.randomUUID(); state.jobId=null; state.jobComplete=false; state.chatHistory=[]; state.extractedData={title:'',hard_skills:[],soft_skills:[],requirements:[]}; state.profiles=[]; state.candidates=[]; state.shortlist=[]; state.stars={}; state.currentModal=null;
+  document.getElementById('btn-to-profiles').disabled=true; document.getElementById('nav-step-2').disabled=true; document.getElementById('nav-step-3').disabled=true;
+  const epTitle=document.getElementById('ep-title'); epTitle.textContent='Aguardando análise...'; epTitle.classList.add('empty'); document.getElementById('ep-body').innerHTML='';
+  const container=document.getElementById('chat-messages'); container.innerHTML='';
+  const initMsg=document.createElement('div'); initMsg.className='msg ai'; initMsg.innerHTML='<div class="msg-avatar ai">AI</div><div class="msg-bubble">Pronto para uma nova vaga! Cole a descrição ou me conte sobre a posição.</div>';
+  container.appendChild(initMsg); document.getElementById('chat-input').focus();
 }
 
-function buildSkillCluster(title, skills, cls) {
-  const cluster = document.createElement('div');
-  cluster.className = 'skill-cluster';
-  const h = document.createElement('h4');
-  h.textContent = title;
-  const tags = document.createElement('div');
-  tags.className = 'skill-tags';
-  skills.forEach(s => {
-    const tag = document.createElement('span');
-    tag.className = 'skill-tag ' + cls;
-    tag.textContent = s;
-    tags.appendChild(tag);
-  });
-  cluster.appendChild(h);
-  cluster.appendChild(tags);
-  return cluster;
-}
-
-function closeModal() {
-  document.getElementById('modal-overlay').classList.remove('open');
-  state.currentModal = null;
-}
-
-// ═══ RENDER SHORTLIST ═══
-function renderShortlist() {
-  const empty = document.getElementById('shortlist-empty');
-  const table = document.getElementById('comparison-table');
-  const tbody = document.getElementById('comp-tbody');
-  const slCount = document.getElementById('sl-count');
-
-  const candidates = state.candidates
-    .filter(c => state.shortlist.includes(c.id))
-    .sort((a, b) => (state.stars[b.id] || 0) - (state.stars[a.id] || 0) || b.score - a.score);
-
-  slCount.textContent = candidates.length + ' candidato' + (candidates.length !== 1 ? 's' : '') + ' na shortlist';
-
-  if (!candidates.length) {
-    empty.classList.remove('hidden');
-    table.classList.add('hidden');
-    return;
-  }
-  empty.classList.add('hidden');
-  table.classList.remove('hidden');
-
-  const frag = document.createDocumentFragment();
-  candidates.forEach(c => {
-    const stars = state.stars[c.id] || 0;
-    const tr = document.createElement('tr');
-
-    const tdName = document.createElement('td');
-    const nameDiv = document.createElement('div');
-    nameDiv.className = 'comp-name';
-    nameDiv.textContent = c.name;
-    const roleDiv = document.createElement('div');
-    roleDiv.className = 'comp-role';
-    roleDiv.textContent = c.current_role || '';
-    tdName.appendChild(nameDiv);
-    tdName.appendChild(roleDiv);
-
-    const tdScore = document.createElement('td');
-    const scoreSpan = document.createElement('span');
-    scoreSpan.className = 'comp-score ' + scoreClass(c.score);
-    scoreSpan.textContent = c.score;
-    tdScore.appendChild(scoreSpan);
-
-    const tdStrong = buildCompPoints(c.highlights || c.match_reasons || [], '✦', null);
-    const tdGaps = buildCompPoints(c.concerns || c.gaps || [], '◆', 'var(--amber)');
-
-    const tdStars = document.createElement('td');
-    const starRow = document.createElement('div');
-    starRow.className = 'star-row';
-    [1, 2, 3].forEach(n => {
-      const btn = document.createElement('button');
-      btn.className = 'star' + (stars >= n ? ' lit' : '');
-      btn.textContent = '★';
-      btn.setAttribute('data-id', c.id);
-      btn.setAttribute('data-n', n);
-      btn.setAttribute('aria-label', n + ' estrela' + (n > 1 ? 's' : '') + ' para ' + c.name);
-      btn.setAttribute('aria-pressed', stars >= n ? 'true' : 'false');
-      starRow.appendChild(btn);
-    });
-    tdStars.appendChild(starRow);
-
-    const tdRemove = document.createElement('td');
-    const removeBtn = document.createElement('button');
-    removeBtn.className = 'btn-remove-sl';
-    removeBtn.setAttribute('data-id', c.id);
-    removeBtn.setAttribute('aria-label', 'Remover ' + c.name + ' da shortlist');
-    removeBtn.textContent = 'Remover';
-    tdRemove.appendChild(removeBtn);
-
-    tr.appendChild(tdName);
-    tr.appendChild(tdScore);
-    tr.appendChild(tdStrong);
-    tr.appendChild(tdGaps);
-    tr.appendChild(tdStars);
-    tr.appendChild(tdRemove);
-    frag.appendChild(tr);
-  });
-
-  tbody.innerHTML = '';
-  tbody.appendChild(frag);
-}
-
-function buildCompPoints(items, icon, iconColor) {
-  const td = document.createElement('td');
-  const div = document.createElement('div');
-  div.className = 'comp-points';
-  items.slice(0, 2).forEach(text => {
-    const pt = document.createElement('div');
-    pt.className = 'pt';
-    const ic = document.createElement('span');
-    ic.setAttribute('aria-hidden', 'true');
-    if (iconColor) ic.style.color = iconColor;
-    ic.textContent = icon;
-    const txt = document.createTextNode(text);
-    pt.appendChild(ic);
-    pt.appendChild(txt);
-    div.appendChild(pt);
-  });
-  td.appendChild(div);
-  return td;
-}
-
-document.getElementById('comp-tbody').addEventListener('click', e => {
-  const starBtn = e.target.closest('.star');
-  if (starBtn) { setStar(starBtn.dataset.id, Number(starBtn.dataset.n)); return; }
-  const removeBtn = e.target.closest('.btn-remove-sl');
-  if (removeBtn) { toggleShortlist(removeBtn.dataset.id); renderShortlist(); }
-});
-
-function setStar(id, n) {
-  state.stars[id] = state.stars[id] === n ? 0 : n;
-  renderShortlist();
-}
-
-// ═══ NOVA VAGA ═══
-function startNovaVaga() {
-  clearSession();
-
-  state.sessionId = crypto.randomUUID();
-  state.jobId = null;
-  state.jobComplete = false;
-  state.chatHistory = [];
-  state.extractedData = { title: '', hard_skills: [], soft_skills: [], requirements: [], persona: '' };
-  state.profiles = [];
-  state.candidates = [];
-  state.shortlist = [];
-  state.stars = {};
-  state.currentModal = null;
-
-  document.getElementById('btn-to-profiles').disabled = true;
-  document.getElementById('nav-step-2').disabled = true;
-  document.getElementById('nav-step-3').disabled = true;
-
-  const epTitle = document.getElementById('ep-title');
-  epTitle.textContent = 'Aguardando análise...';
-  epTitle.classList.add('empty');
-  document.getElementById('ep-body').innerHTML = '';
-
-  const container = document.getElementById('chat-messages');
-  container.innerHTML = '';
-  const initMsg = document.createElement('div');
-  initMsg.className = 'msg ai';
-  initMsg.innerHTML = '<div class="msg-avatar ai" aria-hidden="true">AI</div><div class="msg-bubble">Pronto para uma nova vaga! Cole a descrição ou me conte sobre a posição.</div>';
-  container.appendChild(initMsg);
-
-  document.getElementById('chat-input').focus();
-}
-
-// ═══ INIT ═══
 document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('chat-input').addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-  });
-
+  document.getElementById('btn-login').addEventListener('click', sendMagicLink);
+  document.getElementById('login-email').addEventListener('keydown', e => { if(e.key==='Enter') sendMagicLink(); });
+  document.getElementById('chat-input').addEventListener('keydown', e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();} });
   document.getElementById('btn-send').addEventListener('click', sendMessage);
-
   document.getElementById('file-input').addEventListener('change', e => handleFiles(e.target.files));
-
-  const dz = document.getElementById('drop-zone');
-  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
-  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
-  dz.addEventListener('drop', e => {
-    e.preventDefault();
-    dz.classList.remove('drag-over');
-    handleFiles(e.dataTransfer.files);
-  });
-
-  document.getElementById('modal-overlay').addEventListener('click', e => {
-    if (e.target === document.getElementById('modal-overlay')) closeModal();
-  });
-
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && state.currentModal) closeModal();
-  });
-
-  setTimeout(() => document.getElementById('chat-input').focus(), 400);
-
-  if (state.jobComplete && state.jobId) {
-    document.getElementById('btn-to-profiles').disabled = false;
-    document.getElementById('nav-step-2').disabled = false;
-    if (state.extractedData?.title) {
-      updateExtractedPanel(state.extractedData);
-    }
-    const banner = document.createElement('div');
-    banner.className = 'session-restored-banner';
-    const title = state.extractedData?.title || 'vaga anterior';
-    banner.innerHTML = `
-      <span>✅ Sessão restaurada — <strong>${escapeHTML(title)}</strong>. Continue para análise de candidatos ou inicie uma nova vaga.</span>
-      <button class="btn-nova-vaga" onclick="startNovaVaga()">+ Nova Vaga</button>
-    `;
-    document.getElementById('chat-messages').appendChild(banner);
-  }
+  const dz=document.getElementById('drop-zone');
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-over');});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('drag-over'));
+  dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag-over');handleFiles(e.dataTransfer.files);});
+  document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('modal-overlay'))closeModal();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&state.currentModal)closeModal();});
+  initAuth();
 });
 </script>
 </body>
