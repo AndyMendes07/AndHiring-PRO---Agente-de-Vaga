@@ -332,7 +332,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Plus Jakarta San
       </button>
     </div>
     <div class="nav-right">
-      <span class="nav-badge">v3.2</span>
+      <span class="nav-badge">v3.3</span>
       <div class="nav-user">
         <span class="nav-user-email" id="nav-user-email">—</span>
         <button class="btn-logout" onclick="logout()">Sair</button>
@@ -509,7 +509,6 @@ const CONFIG = {
 let currentUser = null;
 
 async function initAuth() {
-  // Registra listener PRIMEIRO para capturar o token do magic link no hash
   _supabase.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_IN' && session) {
       currentUser = session.user;
@@ -520,8 +519,6 @@ async function initAuth() {
       showLogin();
     }
   });
-
-  // Verifica sessão existente DEPOIS
   const { data: { session } } = await _supabase.auth.getSession();
   if (session) {
     currentUser = session.user;
@@ -615,6 +612,20 @@ function escapeHTML(str) { const d = document.createElement('div'); d.textConten
 function scoreColor(s) { return s >= 80 ? 'var(--emerald)' : s >= 50 ? 'var(--amber)' : 'var(--red)'; }
 function scoreClass(s) { return s >= 80 ? 'high' : s >= 50 ? 'mid' : 'low'; }
 function safeUrl(raw) { try { const u = new URL(raw.startsWith('http') ? raw : 'https://' + raw); if (u.protocol !== 'https:' && u.protocol !== 'http:') return null; return u.href; } catch { return null; } }
+
+// Normaliza o campo recommendation para as classes CSS corretas
+function normalizeRec(r) {
+  if (!r) return 'maybe';
+  const map = {
+    'shortlist': 'shortlist',
+    'maybe': 'maybe',
+    'discard': 'discard',
+    'avançar': 'shortlist',
+    'avançar com ressalvas': 'maybe',
+    'não avançar': 'discard',
+  };
+  return map[r.toLowerCase().trim()] || 'maybe';
+}
 
 // ═══ NAVEGAÇÃO ═══
 function goToView(name) {
@@ -817,7 +828,9 @@ function renderRanking() {
     (c.hard_skills||[]).slice(0,3).forEach(s => { const tag=document.createElement('span'); tag.className='card-tag'; tag.style.cssText='border-color:var(--accent-glow);color:var(--accent)'; tag.textContent=s; meta.appendChild(tag); });
     info.appendChild(nameEl); info.appendChild(roleEl); info.appendChild(meta);
     const actions = document.createElement('div'); actions.className='card-actions';
-    const badge = document.createElement('span'); badge.className='badge-rec badge-'+(c.recommendation||'maybe'); badge.textContent=c.recommendation||'';
+    const badge = document.createElement('span');
+    badge.className='badge-rec badge-'+normalizeRec(c.recommendation);
+    badge.textContent=c.recommendation||'';
     const slBtn = document.createElement('button'); slBtn.className='btn-shortlist-card'+(inSL?' in-shortlist':''); slBtn.setAttribute('data-id',c.id); slBtn.textContent=inSL?'⭐':'☆';
     actions.appendChild(badge); actions.appendChild(slBtn);
     card.appendChild(rank); card.appendChild(ring); card.appendChild(info); card.appendChild(actions);
@@ -855,7 +868,11 @@ function openModal(id) {
   const metaEl = document.getElementById('modal-meta'); metaEl.innerHTML='';
   const chips=[]; if(c.location) chips.push(['📍',c.location]); if(c.education) chips.push(['🎓',c.education]);
   chips.forEach(([icon,text]) => { const chip=document.createElement('span'); chip.className='meta-chip'; chip.innerHTML=`<span>${icon}</span>`; chip.appendChild(document.createTextNode(text)); metaEl.appendChild(chip); });
-  const recChip=document.createElement('span'); recChip.className='meta-chip badge-'+(c.recommendation||'maybe'); recChip.style.cssText='border:none;padding:3px 10px'; recChip.textContent=c.recommendation||''; metaEl.appendChild(recChip);
+  const recChip=document.createElement('span');
+  recChip.className='meta-chip badge-'+normalizeRec(c.recommendation);
+  recChip.style.cssText='border:none;padding:3px 10px';
+  recChip.textContent=c.recommendation||'';
+  metaEl.appendChild(recChip);
   const liBtn=document.getElementById('modal-linkedin-btn'); const safeLink=c.linkedin_url?safeUrl(c.linkedin_url):null;
   if(safeLink){liBtn.href=safeLink;liBtn.style.display='inline-flex';}else{liBtn.style.display='none';}
   const body=document.getElementById('modal-body'); body.innerHTML='';
