@@ -9,6 +9,7 @@
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root {
   --bg: #0b0c10;
@@ -141,14 +142,21 @@ body { background: var(--bg); color: var(--text); font-family: 'Plus Jakarta San
 .ep-meta-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .ep-meta-badge { font-size: 0.75rem; padding: 4px 10px; border-radius: 99px; border: 1px solid var(--border); color: var(--text-muted); display: inline-flex; align-items: center; gap: 4px; }
 
-/* FIXED ADVANCE BUTTON */
-.btn-advance-fixed { position: fixed; bottom: 28px; right: 28px; z-index: 90; padding: 13px 22px; background: var(--accent); border: none; border-radius: var(--radius); color: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 0.875rem; cursor: pointer; transition: opacity 0.2s, transform 0.2s, box-shadow 0.2s; display: flex; align-items: center; gap: 8px; box-shadow: 0 8px 24px rgba(124,106,245,0.35); }
-.btn-advance-fixed:hover:not(:disabled) { opacity: 0.88; transform: translateY(-2px); box-shadow: 0 12px 32px rgba(124,106,245,0.45); }
-.btn-advance-fixed:disabled { opacity: 0.25; cursor: not-allowed; box-shadow: none; transform: none; }
+/* FIXED NAVIGATION BUTTONS */
+.btn-fixed-nav { position: fixed; bottom: 28px; z-index: 90; padding: 13px 22px; border: none; border-radius: var(--radius); font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 0.875rem; cursor: pointer; transition: opacity 0.2s, transform 0.2s, box-shadow 0.2s; display: none; align-items: center; gap: 8px; }
+.btn-fixed-nav.visible { display: flex; }
+.btn-fixed-nav:disabled { opacity: 0.25; cursor: not-allowed; box-shadow: none; transform: none; }
+.btn-fixed-nav.right { right: 28px; background: var(--accent); color: #fff; box-shadow: 0 8px 24px rgba(124,106,245,0.35); }
+.btn-fixed-nav.right:hover:not(:disabled) { opacity: 0.88; transform: translateY(-2px); box-shadow: 0 12px 32px rgba(124,106,245,0.45); }
+.btn-fixed-nav.left { left: 28px; background: var(--surface); color: var(--text-muted); border: 1px solid var(--border); box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+.btn-fixed-nav.left:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
 
-/* BACK NAV BUTTON */
+/* BACK NAV BUTTON (inline) */
 .btn-back-nav { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: transparent; color: var(--text-muted); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.82rem; font-weight: 500; cursor: pointer; transition: all 0.2s; }
 .btn-back-nav:hover { border-color: var(--accent); color: var(--accent); }
+
+/* keep for compat */
+.btn-advance-fixed { display: none; }
 
 /* RECRUITER GUIDANCE */
 .recruiter-guidance-box { display: flex; flex-direction: column; gap: 8px; }
@@ -157,6 +165,22 @@ body { background: var(--bg); color: var(--text); font-family: 'Plus Jakarta San
 
 /* keep for compat */
 .btn-next-view { display: none; }
+.stars-pillars { display: flex; flex-direction: column; gap: 6px; min-width: 160px; }
+.star-pillar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.star-pillar-label { font-size: 0.68rem; color: var(--text-muted); white-space: nowrap; min-width: 68px; }
+.star-row-5 { display: flex; gap: 1px; }
+.star5 { background: none; border: none; font-size: 0.9rem; cursor: pointer; color: var(--border); transition: color 0.12s; padding: 1px; line-height: 1; border-radius: 3px; }
+.star5.lit { color: var(--amber); }
+.star5:hover { color: var(--amber); }
+
+/* PDF EXPORT BUTTON */
+.btn-export-pdf { display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px; border: 1px solid rgba(52,211,153,0.3); border-radius: var(--radius-sm); background: var(--emerald-dim); color: var(--emerald); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.btn-export-pdf:hover { background: rgba(52,211,153,0.2); transform: translateY(-1px); }
+
+@media (max-width: 768px) {
+  .btn-fixed-nav.right { bottom: 16px; right: 16px; padding: 11px 18px; font-size: 0.82rem; }
+  .btn-fixed-nav.left { bottom: 16px; left: 16px; padding: 11px 18px; font-size: 0.82rem; }
+}
 
 /* ═══ VIEW 2: PROFILES ═══ */
 #view-profiles { flex-direction: column; }
@@ -400,9 +424,10 @@ body { background: var(--bg); color: var(--text); font-family: 'Plus Jakarta San
       </button>
     </aside>
   </main>
-  <button class="btn-advance-fixed" id="btn-to-profiles-fixed" disabled onclick="goToView('profiles')" title="Avançar para Perfis">
-    Avançar para Perfis →
-  </button>
+
+  <!-- FIXED NAV BUTTONS (controlled by goToView) -->
+  <button class="btn-fixed-nav right" id="btn-fixed-right" disabled onclick="handleFixedRight()"></button>
+  <button class="btn-fixed-nav left" id="btn-fixed-left" onclick="handleFixedLeft()"></button>
 
   <!-- VIEW 2 -->
   <div id="view-profiles" class="view">
@@ -472,6 +497,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Plus Jakarta San
     </div>
     <div class="shortlist-toolbar">
       <span style="font-size:0.8rem;color:var(--text-muted)" id="sl-count"></span>
+      <button class="btn-export-pdf" onclick="exportPDF()" style="margin-left:auto">⬇ Exportar Relatório PDF</button>
     </div>
     <div class="shortlist-empty" id="shortlist-empty">
       <div class="ranking-empty-icon">⭐</div>
@@ -481,7 +507,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Plus Jakarta San
     <div class="comparison-table hidden" id="comparison-table">
       <table class="comp-table">
         <thead>
-          <tr><th>Candidato</th><th>Score</th><th>Pontos Fortes</th><th>Pontos de Atenção</th><th>Estrelas</th><th></th></tr>
+          <tr><th>Candidato</th><th>Score</th><th>Pontos Fortes</th><th>Pontos de Atenção</th><th>Avaliação</th><th></th></tr>
         </thead>
         <tbody id="comp-tbody"></tbody>
       </table>
@@ -563,6 +589,7 @@ function showApp() {
   document.getElementById('view-login').classList.remove('active');
   document.getElementById('app').classList.add('active');
   document.getElementById('nav-user-email').textContent = currentUser?.email || '—';
+  updateFixedNav('job');
   restoreSessionIfExists();
 }
 
@@ -624,7 +651,6 @@ function restoreSessionIfExists() {
   state.extractedData = saved.extractedData || state.extractedData;
   if (state.jobComplete && state.jobId) {
     document.getElementById('btn-to-profiles').disabled = false;
-    document.getElementById('btn-to-profiles-fixed').disabled = false;
     document.getElementById('nav-step-2').disabled = false;
     if (state.extractedData?.title) updateExtractedPanel(state.extractedData);
     const banner = document.createElement('div');
@@ -666,6 +692,36 @@ function goToView(name) {
     if (v === name) btn.classList.add('active');
     else if ((v==='job' && (name==='profiles'||name==='shortlist')) || (v==='profiles'&&name==='shortlist')) btn.classList.add('done');
   });
+  updateFixedNav(name);
+}
+
+function updateFixedNav(view) {
+  const right = document.getElementById('btn-fixed-right');
+  const left  = document.getElementById('btn-fixed-left');
+  // reset
+  right.classList.remove('visible'); left.classList.remove('visible');
+
+  if (view === 'job') {
+    right.textContent = 'Avançar para Perfis →';
+    right.disabled = !state.jobComplete;
+    right.classList.add('visible');
+  } else if (view === 'profiles') {
+    left.textContent = '← Definição de Vaga';
+    left.classList.add('visible');
+  } else if (view === 'shortlist') {
+    left.textContent = '← Voltar aos Perfis';
+    left.classList.add('visible');
+  }
+}
+
+function handleFixedRight() {
+  const view = document.querySelector('.view.active')?.id?.replace('view-','');
+  if (view === 'job') goToView('profiles');
+}
+function handleFixedLeft() {
+  const view = document.querySelector('.view.active')?.id?.replace('view-','');
+  if (view === 'profiles') goToView('job');
+  else if (view === 'shortlist') goToView('profiles');
 }
 
 // ═══ CHAT ═══
@@ -691,8 +747,8 @@ function sendMessage() {
     if (data.complete) {
       state.jobComplete = true; state.jobId = data.job_id;
       document.getElementById('btn-to-profiles').disabled = false;
-      document.getElementById('btn-to-profiles-fixed').disabled = false;
       document.getElementById('nav-step-2').disabled = false;
+      updateFixedNav('job');
       saveSession();
     }
   })
@@ -977,31 +1033,179 @@ function closeModal(){document.getElementById('modal-overlay').classList.remove(
 
 function renderShortlist(){
   const empty=document.getElementById('shortlist-empty'); const table=document.getElementById('comparison-table'); const tbody=document.getElementById('comp-tbody');
-  const candidates=state.candidates.filter(c=>state.shortlist.includes(c.id)).sort((a,b)=>(state.stars[b.id]||0)-(state.stars[a.id]||0)||b.score-a.score);
+  const candidates=state.candidates.filter(c=>state.shortlist.includes(c.id)).sort((a,b)=>(avgStars(b.id))-(avgStars(a.id))||b.score-a.score);
   document.getElementById('sl-count').textContent=candidates.length+' candidato'+(candidates.length!==1?'s':'')+' na shortlist';
   if(!candidates.length){empty.classList.remove('hidden');table.classList.add('hidden');return;}
   empty.classList.add('hidden');table.classList.remove('hidden');
   const frag=document.createDocumentFragment();
   candidates.forEach(c=>{
-    const stars=state.stars[c.id]||0; const tr=document.createElement('tr');
+    const stars=state.stars[c.id]||{req:0,hard:0,soft:0}; const tr=document.createElement('tr');
     const tdN=document.createElement('td'); const nd=document.createElement('div');nd.className='comp-name';nd.textContent=c.name; const rd=document.createElement('div');rd.className='comp-role';rd.textContent=c.current_role||''; tdN.appendChild(nd);tdN.appendChild(rd);
     const tdS=document.createElement('td'); const ss=document.createElement('span');ss.className='comp-score '+scoreClass(c.score);ss.textContent=c.score; tdS.appendChild(ss);
     const tdH=buildCompPoints(c.highlights||c.match_reasons||[],'✦',null);
     const tdG=buildCompPoints(c.concerns||c.gaps||[],'◆','var(--amber)');
-    const tdSt=document.createElement('td'); const sr=document.createElement('div');sr.className='star-row';
-    [1,2,3].forEach(n=>{const b=document.createElement('button');b.className='star'+(stars>=n?' lit':'');b.textContent='★';b.setAttribute('data-id',c.id);b.setAttribute('data-n',n);sr.appendChild(b);}); tdSt.appendChild(sr);
+    const tdSt=document.createElement('td');
+    const pillars=[['Obrigatórios','req'],['Hard Skills','hard'],['Soft Skills','soft']];
+    const pillarsDiv=document.createElement('div');pillarsDiv.className='stars-pillars';
+    pillars.forEach(([label,key])=>{
+      const row=document.createElement('div');row.className='star-pillar';
+      const lbl=document.createElement('span');lbl.className='star-pillar-label';lbl.textContent=label;
+      const sr=document.createElement('div');sr.className='star-row-5';
+      [1,2,3,4,5].forEach(n=>{
+        const b=document.createElement('button');b.className='star5'+(stars[key]>=n?' lit':'');
+        b.textContent='★';b.dataset.id=c.id;b.dataset.key=key;b.dataset.n=n;sr.appendChild(b);
+      });
+      row.appendChild(lbl);row.appendChild(sr);pillarsDiv.appendChild(row);
+    });
+    tdSt.appendChild(pillarsDiv);
     const tdR=document.createElement('td'); const rb=document.createElement('button');rb.className='btn-remove-sl';rb.setAttribute('data-id',c.id);rb.textContent='Remover'; tdR.appendChild(rb);
     tr.appendChild(tdN);tr.appendChild(tdS);tr.appendChild(tdH);tr.appendChild(tdG);tr.appendChild(tdSt);tr.appendChild(tdR); frag.appendChild(tr);
   });
   tbody.innerHTML=''; tbody.appendChild(frag);
 }
+function avgStars(id){const s=state.stars[id]||{req:0,hard:0,soft:0};return((s.req+s.hard+s.soft)/3);}
 function buildCompPoints(items,icon,iconColor){const td=document.createElement('td');const div=document.createElement('div');div.className='comp-points';items.slice(0,2).forEach(text=>{const pt=document.createElement('div');pt.className='pt';const ic=document.createElement('span');if(iconColor)ic.style.color=iconColor;ic.textContent=icon;pt.appendChild(ic);pt.appendChild(document.createTextNode(text));div.appendChild(pt);});td.appendChild(div);return td;}
-document.getElementById('comp-tbody').addEventListener('click',e=>{const sb=e.target.closest('.star');if(sb){setStar(sb.dataset.id,Number(sb.dataset.n));return;}const rb=e.target.closest('.btn-remove-sl');if(rb){toggleShortlist(rb.dataset.id);renderShortlist();}});
-function setStar(id,n){state.stars[id]=state.stars[id]===n?0:n;renderShortlist();}
+document.getElementById('comp-tbody').addEventListener('click',e=>{
+  const sb=e.target.closest('.star5');
+  if(sb){setStar(sb.dataset.id,sb.dataset.key,Number(sb.dataset.n));return;}
+  const rb=e.target.closest('.btn-remove-sl');if(rb){toggleShortlist(rb.dataset.id);renderShortlist();}
+});
+function setStar(id,key,n){
+  if(!state.stars[id])state.stars[id]={req:0,hard:0,soft:0};
+  state.stars[id][key]=state.stars[id][key]===n?0:n;
+  renderShortlist();
+}
+
+function exportPDF() {
+  const { jsPDF } = window.jspdf;
+  if (!jsPDF) { alert('jsPDF não carregado. Tente novamente.'); return; }
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const W = 210; const margin = 18; const cw = W - margin * 2;
+  let y = 0;
+
+  function addPage() { doc.addPage(); y = 20; }
+  function checkY(need) { if (y + need > 275) addPage(); }
+  function hline(yy, color='#252a38') { doc.setDrawColor(color); doc.setLineWidth(0.3); doc.line(margin, yy, W-margin, yy); }
+
+  // ── HEADER ──
+  doc.setFillColor(11,12,16); doc.rect(0,0,W,32,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.setTextColor(255,255,255);
+  doc.text('AndHiring', margin, 14);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(124,106,245);
+  doc.text('PRO', margin + doc.getTextWidth('AndHiring') + 1.5, 14);
+  doc.setTextColor(107,114,128); doc.setFontSize(8);
+  doc.text('Relatório de Triagem de Candidatos', margin, 21);
+  const now = new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  doc.text(now, W - margin - doc.getTextWidth(now), 21);
+  y = 40;
+
+  // ── JOB INFO ──
+  const title = state.extractedData?.title || 'Vaga';
+  doc.setFont('helvetica','bold'); doc.setFontSize(14); doc.setTextColor(238,240,246);
+  doc.text(title, margin, y); y += 7;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(107,114,128);
+  const meta = [state.extractedData?.seniority, state.extractedData?.location, state.extractedData?.work_model].filter(Boolean).join(' · ');
+  if (meta) { doc.text(meta, margin, y); y += 5; }
+  hline(y); y += 6;
+
+  // ── METRICS ──
+  const shortlisted = state.candidates.filter(c=>state.shortlist.includes(c.id));
+  const total = state.candidates.length;
+  doc.setFillColor(26,29,38); doc.roundedRect(margin, y, cw/2-4, 18, 3, 3,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.setTextColor(124,106,245);
+  doc.text(String(total), margin+8, y+11);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(107,114,128);
+  doc.text('candidatos triados', margin+8, y+16);
+  const mx2 = margin + cw/2 + 4;
+  doc.setFillColor(26,29,38); doc.roundedRect(mx2, y, cw/2-4, 18, 3, 3,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.setTextColor(52,211,153);
+  doc.text(String(shortlisted.length), mx2+8, y+11);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(107,114,128);
+  doc.text('na shortlist', mx2+8, y+16);
+  y += 26;
+
+  // ── CANDIDATES ──
+  shortlisted.sort((a,b)=>b.score-a.score).forEach((c,idx)=>{
+    checkY(50);
+    // candidate header
+    doc.setFillColor(18,20,26); doc.roundedRect(margin, y, cw, 12, 2, 2,'F');
+    const scoreCol = c.score>=80?[52,211,153]:c.score>=50?[251,191,36]:[248,113,113];
+    doc.setFillColor(...scoreCol); doc.circle(margin+8, y+6, 4,'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(0,0,0);
+    doc.text(String(c.score), margin+8, y+7.5, {align:'center'});
+    doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(238,240,246);
+    doc.text(c.name||'—', margin+16, y+5);
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(107,114,128);
+    const role=(c.current_role||'')+(c.location?' · '+c.location:'');
+    doc.text(role, margin+16, y+9.5);
+    // recommendation badge
+    const recTxt = c.recommendation||'';
+    const recCol = normalizeRec(c.recommendation)==='shortlist'?[52,211,153]:normalizeRec(c.recommendation)==='maybe'?[251,191,36]:[248,113,113];
+    doc.setFillColor(recCol[0],recCol[1],recCol[2],0.15); doc.setTextColor(...recCol);
+    doc.setFontSize(7); doc.setFont('helvetica','bold');
+    doc.text(recTxt.toUpperCase(), W-margin-2, y+7, {align:'right'});
+    y += 16;
+
+    // star rating summary
+    const stars=state.stars[c.id]||{req:0,hard:0,soft:0};
+    const starStr=`Obrigatórios: ${'★'.repeat(stars.req)||'—'}  Hard Skills: ${'★'.repeat(stars.hard)||'—'}  Soft Skills: ${'★'.repeat(stars.soft)||'—'}`;
+    doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(251,191,36);
+    doc.text(starStr, margin, y); y += 5;
+
+    // executive summary
+    if(c.executive_summary||c.summary){
+      checkY(20);
+      doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(107,114,128);
+      doc.text('RESUMO EXECUTIVO', margin, y); y+=4;
+      doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(200,205,220);
+      const lines=doc.splitTextToSize(c.executive_summary||c.summary, cw);
+      const need=lines.length*4+4; checkY(need);
+      doc.text(lines, margin, y); y+=lines.length*4+4;
+    }
+
+    // highlights
+    const hl=(c.highlights||c.match_reasons||[]).slice(0,3);
+    if(hl.length){
+      checkY(16); doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(52,211,153);
+      doc.text('PONTOS FORTES', margin, y); y+=4;
+      hl.forEach(h=>{ const ln=doc.splitTextToSize('✦ '+h, cw-4); const need=ln.length*3.8+2; checkY(need); doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(200,205,220); doc.text(ln,margin+2,y); y+=ln.length*3.8+2; });
+    }
+
+    // concerns
+    const co=(c.concerns||c.gaps||[]).slice(0,2);
+    if(co.length){
+      checkY(14); doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(251,191,36);
+      doc.text('PONTOS DE ATENÇÃO', margin, y); y+=4;
+      co.forEach(h=>{ const ln=doc.splitTextToSize('◆ '+h, cw-4); const need=ln.length*3.8+2; checkY(need); doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(200,205,220); doc.text(ln,margin+2,y); y+=ln.length*3.8+2; });
+    }
+
+    // recruiter guidance
+    const rg=(c.recruiter_guidance||[]).slice(0,3);
+    if(rg.length){
+      checkY(16); doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(251,191,36);
+      doc.text('PERGUNTAS PARA ENTREVISTA', margin, y); y+=4;
+      rg.forEach((q,qi)=>{ const ln=doc.splitTextToSize((qi+1)+'. '+q, cw-4); const need=ln.length*3.8+2; checkY(need); doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(200,205,220); doc.text(ln,margin+2,y); y+=ln.length*3.8+2; });
+    }
+
+    hline(y+2,'#252a38'); y+=8;
+  });
+
+  // ── FOOTER ──
+  const pages=doc.internal.getNumberOfPages();
+  for(let i=1;i<=pages;i++){
+    doc.setPage(i); doc.setFontSize(7); doc.setTextColor(90,100,128);
+    doc.text('Gerado por AndHiring PRO', margin, 292);
+    doc.text('Página '+i+' de '+pages, W-margin, 292, {align:'right'});
+  }
+
+  const slug=(title||'relatorio').toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'');
+  doc.save('andhiring-shortlist-'+slug+'.pdf');
+}
 
 function startNovaVaga(){
   clearSession(); state.sessionId=crypto.randomUUID(); state.jobId=null; state.jobComplete=false; state.chatHistory=[]; state.extractedData={title:'',hard_skills:[],soft_skills:[],requirements:[]}; state.profiles=[]; state.candidates=[]; state.shortlist=[]; state.stars={}; state.currentModal=null;
-  document.getElementById('btn-to-profiles').disabled=true; document.getElementById('btn-to-profiles-fixed').disabled=true; document.getElementById('nav-step-2').disabled=true; document.getElementById('nav-step-3').disabled=true;
+  document.getElementById('btn-to-profiles').disabled=true; document.getElementById('nav-step-2').disabled=true; document.getElementById('nav-step-3').disabled=true;
+  updateFixedNav('job');
   const epTitle=document.getElementById('ep-title'); epTitle.textContent='Aguardando análise...'; epTitle.classList.add('empty'); document.getElementById('ep-body').innerHTML='';
   const container=document.getElementById('chat-messages'); container.innerHTML='';
   const initMsg=document.createElement('div'); initMsg.className='msg ai'; initMsg.innerHTML='<div class="msg-avatar ai">AI</div><div class="msg-bubble">Pronto para uma nova vaga! Cole a descrição ou me conte sobre a posição.</div>';
